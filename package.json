@@ -1,0 +1,12 @@
+{
+  "name": "co-assist-ai",
+  "version": "1.0.0",
+  "description": "A floating AI chat panel for desktop, styled like modern AI interfaces",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}
