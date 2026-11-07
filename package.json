@@ -2,7 +2,7 @@
   "name": "ciyper",
   "productName": "Ciyper",
   "version": "1.0.0",
-  "description": "A floating AI copilot for live interviews and meetings",
+  "description": "A floating AI assistant for live job interviews",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

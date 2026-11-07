@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**A discreet, privacy-first desktop AI copilot designed for live job interviews and meetings.**
+**A discreet, privacy-first desktop AI assistant designed for live job interviews.**
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)](https://github.com)
 [![Electron](https://img.shields.io/badge/Electron-31.0.0-47848F?style=flat-square&logo=electron)](https://www.electronjs.org/)
@@ -16,7 +16,7 @@
 
 ## 🌟 Overview
 
-**Ciyper** is an open-source desktop copilot built to give candidates and professionals real-time assistance during live job interviews and meetings. Powered by **Groq Cloud's ultra-low latency inference engine**, Ciyper delivers concise, natural, first-person answers tailored specifically to your real experience, skills, and background.
+**Ciyper** is an open-source desktop assistant built to give candidates real-time assistance during live job interviews. Powered by **Groq Cloud's ultra-low latency inference engine**, Ciyper delivers concise, natural, first-person answers tailored specifically to your real experience, skills, and background.
 
 It floats as a sleek, transparent, always-on-top pill widget that sits discreetly above your meeting screen, ready to transcribe speech, answer questions, or provide technical solutions without interrupting your flow.
 
