@@ -201,6 +201,22 @@ function renderUI() {
       activeModelIndicator.style.fontStyle = "normal";
       activeModelIndicator.style.color = "#FFFFFF";
     }
+
+    // Update checkmark visibility in model options
+    if (customModelOptions) {
+      const options = customModelOptions.querySelectorAll('.custom-option');
+      options.forEach(opt => {
+        const val = opt.getAttribute('data-value');
+        const checkIcon = opt.querySelector('.checkmark-icon');
+        if (val === selectedVal) {
+          opt.classList.add('bg-white', 'bg-opacity-10');
+          if (checkIcon) checkIcon.classList.remove('hidden');
+        } else {
+          opt.classList.remove('bg-white', 'bg-opacity-10');
+          if (checkIcon) checkIcon.classList.add('hidden');
+        }
+      });
+    }
   }
 
   // 5. Render Sessions list
@@ -679,12 +695,24 @@ if (customModelDropdown && customModelOptions && customModelArrow && customModel
   options.forEach(opt => {
     opt.addEventListener('click', async () => {
       const val = opt.getAttribute('data-value');
-      const text = opt.innerText;
 
       customModelValue.setAttribute('data-selected-value', val);
-      customModelValue.innerText = text;
+      customModelValue.innerText = val;
       customModelValue.classList.add('text-white');
       customModelValue.classList.remove('text-gray-400');
+
+      // Update checkmarks
+      options.forEach(o => {
+        const oVal = o.getAttribute('data-value');
+        const cIcon = o.querySelector('.checkmark-icon');
+        if (oVal === val) {
+          o.classList.add('bg-white', 'bg-opacity-10');
+          if (cIcon) cIcon.classList.remove('hidden');
+        } else {
+          o.classList.remove('bg-white', 'bg-opacity-10');
+          if (cIcon) cIcon.classList.add('hidden');
+        }
+      });
 
       customModelOptions.classList.add('hidden');
       customModelOptions.classList.remove('flex');

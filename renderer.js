@@ -1259,12 +1259,13 @@ if (menuBtn && sessionMenuModal) {
       opt.addEventListener('click', async (e) => {
         e.stopPropagation();
         const val = opt.getAttribute('data-value');
-        const text = opt.innerText;
 
         sessionModelValue.setAttribute('data-selected-value', val);
-        sessionModelValue.innerText = text;
+        sessionModelValue.innerText = val;
         sessionModelValue.classList.add('text-white');
         sessionModelValue.classList.remove('text-gray-400');
+
+        updateSessionCheckmarks(val);
 
         sessionModelOptions.classList.add('hidden');
         sessionModelOptions.classList.remove('flex');
@@ -1286,6 +1287,23 @@ if (menuBtn && sessionMenuModal) {
   }
 }
 
+function updateSessionCheckmarks(selectedModel) {
+  const sessionModelOptions = document.getElementById('session-model-options');
+  if (!sessionModelOptions) return;
+  const optElements = sessionModelOptions.querySelectorAll('.session-option');
+  optElements.forEach(opt => {
+    const val = opt.getAttribute('data-value');
+    const checkIcon = opt.querySelector('.checkmark-icon');
+    if (val === selectedModel) {
+      opt.classList.add('bg-white', 'bg-opacity-10');
+      if (checkIcon) checkIcon.classList.remove('hidden');
+    } else {
+      opt.classList.remove('bg-white', 'bg-opacity-10');
+      if (checkIcon) checkIcon.classList.add('hidden');
+    }
+  });
+}
+
 async function initSessionModelDropdown() {
   const sessionModelValue = document.getElementById('session-model-value');
   const sessionInvisibleToggle = document.getElementById('session-invisible-toggle');
@@ -1300,6 +1318,7 @@ async function initSessionModelDropdown() {
       sessionModelValue.classList.add('text-white');
       sessionModelValue.classList.remove('text-gray-400');
     }
+    updateSessionCheckmarks(savedModel);
   } else {
     MODEL_NAME = 'openai/gpt-oss-120b';
     if (sessionModelValue) {
@@ -1308,6 +1327,7 @@ async function initSessionModelDropdown() {
       sessionModelValue.classList.add('text-white');
       sessionModelValue.classList.remove('text-gray-400');
     }
+    updateSessionCheckmarks('openai/gpt-oss-120b');
   }
 
   // Initialize invisible mode toggle state
