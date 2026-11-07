@@ -209,10 +209,8 @@ function renderUI() {
         const val = opt.getAttribute('data-value');
         const checkIcon = opt.querySelector('.checkmark-icon');
         if (val === selectedVal) {
-          opt.classList.add('bg-white', 'bg-opacity-10');
           if (checkIcon) checkIcon.classList.remove('hidden');
         } else {
-          opt.classList.remove('bg-white', 'bg-opacity-10');
           if (checkIcon) checkIcon.classList.add('hidden');
         }
       });
@@ -706,10 +704,8 @@ if (customModelDropdown && customModelOptions && customModelArrow && customModel
         const oVal = o.getAttribute('data-value');
         const cIcon = o.querySelector('.checkmark-icon');
         if (oVal === val) {
-          o.classList.add('bg-white', 'bg-opacity-10');
           if (cIcon) cIcon.classList.remove('hidden');
         } else {
-          o.classList.remove('bg-white', 'bg-opacity-10');
           if (cIcon) cIcon.classList.add('hidden');
         }
       });

@@ -1295,10 +1295,8 @@ function updateSessionCheckmarks(selectedModel) {
     const val = opt.getAttribute('data-value');
     const checkIcon = opt.querySelector('.checkmark-icon');
     if (val === selectedModel) {
-      opt.classList.add('bg-white', 'bg-opacity-10');
       if (checkIcon) checkIcon.classList.remove('hidden');
     } else {
-      opt.classList.remove('bg-white', 'bg-opacity-10');
       if (checkIcon) checkIcon.classList.add('hidden');
     }
   });
