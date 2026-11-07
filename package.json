@@ -23,12 +23,12 @@
       "style.css",
       "prism.js",
       "session.png",
-      "icon.png",
-      "icon.ico",
+      "ciyper-icon.png",
+      "ciyper-icon.ico",
       "package.json"
     ],
     "win": {
-      "icon": "icon.ico",
+      "icon": "ciyper-icon.ico",
       "target": [
         "nsis",
         "portable"
