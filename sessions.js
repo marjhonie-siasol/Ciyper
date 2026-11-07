@@ -84,8 +84,19 @@ if (startSessionBtn) {
       return;
     }
 
+    // Determine configured countdown duration (0: Immediately, 3, 5, 10s)
+    const configuredDuration = localDb && localDb.settings && localDb.settings.countdownDuration !== undefined
+      ? parseInt(localDb.settings.countdownDuration, 10)
+      : 5;
+
+    if (configuredDuration === 0) {
+      startSessionBtn.innerText = "Launching...";
+      ipcRenderer.send('start-session');
+      return;
+    }
+
     // Start countdown state
-    secondsLeft = 5;
+    secondsLeft = configuredDuration;
     
     // Change button styles to a darker cancel theme
     startSessionBtn.classList.add('countdown-running');
@@ -282,11 +293,14 @@ function renderUI() {
   // Always refresh analytics charts
   renderAnalytics();
 
-  // 6. Render Settings Toggle
+  // 6. Render Settings in Modal
   const invisibleModeToggle = document.getElementById('invisible-mode-toggle');
-  if (invisibleModeToggle) {
-    invisibleModeToggle.checked = !!localDb.settings.invisibleMode;
+  if (invisibleModeToggle && localDb && localDb.settings) {
+    const isInv = localDb.settings.invisibleMode !== undefined ? !!localDb.settings.invisibleMode : true;
+    invisibleModeToggle.checked = isInv;
   }
+
+  syncCountdownUI();
 }
 
 // Save / Delete API Key Event Handlers
@@ -775,19 +789,109 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+// Synchronize Countdown Dropdown UI with localDb state
+function syncCountdownUI() {
+  const duration = localDb && localDb.settings && localDb.settings.countdownDuration !== undefined
+    ? parseInt(localDb.settings.countdownDuration, 10)
+    : 5;
+
+  const countdownValue = document.getElementById('countdown-value');
+  if (countdownValue) {
+    countdownValue.innerText = duration === 0 ? 'Immediately' : `${duration}s`;
+    countdownValue.setAttribute('data-selected-value', duration.toString());
+  }
+
+  const options = document.querySelectorAll('.countdown-option');
+  options.forEach(opt => {
+    const optVal = parseInt(opt.getAttribute('data-value'), 10);
+    const checkIcon = opt.querySelector('.checkmark-icon');
+    if (optVal === duration) {
+      if (checkIcon) checkIcon.classList.remove('hidden');
+    } else {
+      if (checkIcon) checkIcon.classList.add('hidden');
+    }
+  });
+}
+
 // Settings Modal Interaction
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const closeSettingsModalBtn = document.getElementById('close-settings-modal-btn');
 const invisibleModeToggle = document.getElementById('invisible-mode-toggle');
+const countdownDropdown = document.getElementById('countdown-dropdown');
+const countdownOptions = document.getElementById('countdown-options');
+const countdownArrow = document.getElementById('countdown-arrow');
+const countdownValue = document.getElementById('countdown-value');
+
+function hideCountdownOptions() {
+  if (countdownOptions) {
+    countdownOptions.classList.add('hidden');
+    countdownOptions.classList.remove('flex');
+  }
+  if (countdownArrow) {
+    countdownArrow.style.transform = '';
+  }
+}
 
 if (settingsBtn && settingsModal) {
   settingsBtn.addEventListener('click', () => {
     settingsModal.classList.remove('hidden');
     settingsModal.classList.add('flex');
-    if (invisibleModeToggle && localDb) {
-      invisibleModeToggle.checked = !!localDb.settings.invisibleMode;
+    if (invisibleModeToggle && localDb && localDb.settings) {
+      const isInv = localDb.settings.invisibleMode !== undefined ? !!localDb.settings.invisibleMode : true;
+      invisibleModeToggle.checked = isInv;
     }
+    syncCountdownUI();
+  });
+}
+
+if (countdownDropdown && countdownOptions && countdownArrow) {
+  countdownDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = countdownOptions.classList.contains('hidden');
+    if (isHidden) {
+      countdownOptions.classList.remove('hidden');
+      countdownOptions.classList.add('flex');
+      countdownArrow.style.transform = 'rotate(180deg)';
+    } else {
+      hideCountdownOptions();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!countdownDropdown.contains(e.target) && !countdownOptions.contains(e.target)) {
+      hideCountdownOptions();
+    }
+  });
+
+  const options = countdownOptions.querySelectorAll('.countdown-option');
+  options.forEach(opt => {
+    opt.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const val = parseInt(opt.getAttribute('data-value'), 10);
+
+      if (countdownValue) {
+        countdownValue.innerText = val === 0 ? 'Immediately' : `${val}s`;
+        countdownValue.setAttribute('data-selected-value', val.toString());
+      }
+
+      options.forEach(o => {
+        const oVal = parseInt(o.getAttribute('data-value'), 10);
+        const cIcon = o.querySelector('.checkmark-icon');
+        if (oVal === val) {
+          if (cIcon) cIcon.classList.remove('hidden');
+        } else {
+          if (cIcon) cIcon.classList.add('hidden');
+        }
+      });
+
+      hideCountdownOptions();
+
+      const updatedDb = await ipcRenderer.invoke('save-countdown-duration', val);
+      if (updatedDb) {
+        localDb = updatedDb;
+      }
+    });
   });
 }
 
@@ -795,6 +899,7 @@ if (closeSettingsModalBtn && settingsModal) {
   closeSettingsModalBtn.addEventListener('click', () => {
     settingsModal.classList.add('hidden');
     settingsModal.classList.remove('flex');
+    hideCountdownOptions();
   });
 }
 
@@ -803,6 +908,7 @@ if (settingsModal) {
     if (e.target === settingsModal) {
       settingsModal.classList.add('hidden');
       settingsModal.classList.remove('flex');
+      hideCountdownOptions();
     }
   });
 }

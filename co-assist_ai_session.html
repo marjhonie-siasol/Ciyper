@@ -11,20 +11,20 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
-<body class="bg-transparent overflow-hidden w-full h-full">
-  <div class="w-full h-full flex flex-col items-center justify-start p-2" id="widget-container">
+<body class="bg-transparent overflow-hidden w-full h-full m-0 p-0">
+  <div class="w-full h-full flex flex-col items-center justify-start p-0 m-0 overflow-hidden" id="widget-container">
     
     <!-- FIRST FLOATING: Control Bar (Top Pill) -->
     <header class="bg-theme-bg border border-theme-border rounded-full drag-handle" id="control-bar">
-      <!-- Audio Wave GIF -->
-      <div class="flex items-center justify-center flex-shrink-0">
-        <img src="icons8-wave-100.apng.png" alt="audio-wave" class="w-8 h-8 object-contain icon-theme opacity-80" id="audio-wave-gif">
-      </div>
- 
       <!-- Recording Close Button -->
       <button id="recording-close-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity no-drag flex-shrink-0" title="Close App">
         <img src="https://img.icons8.com/forma-bold-filled-sharp/96/circled.png" alt="circled" class="w-4 h-4 icon-theme">
       </button>
+
+      <!-- Session Wave Indicator -->
+      <div class="flex items-center justify-center flex-shrink-0">
+        <img src="session.png" alt="session-wave" class="w-8 h-8 object-contain icon-theme opacity-80" id="audio-wave-gif">
+      </div>
  
       <!-- Session Duration Timer -->
       <span class="text-white text-sm font-semibold tracking-wide select-none flex-shrink-0" id="session-timer">00:00</span>
@@ -78,7 +78,7 @@
     </div>
  
     <!-- Floating Menu Dropdown/Modal (Absolute, positioned dynamically) -->
-    <div id="session-menu-modal" class="absolute flex rounded-2xl p-3.5 z-50 flex-col space-y-3.5 no-drag bg-theme-bg border border-theme-border collapsed-menu" style="min-width: 250px; backdrop-filter: blur(6px);">
+    <div id="session-menu-modal" class="absolute flex rounded-2xl p-3.5 z-50 flex-col space-y-3.5 no-drag bg-theme-bg border border-theme-border collapsed-menu" style="width: 250px; min-width: 250px; backdrop-filter: blur(6px);">
       <!-- Invisible Mode Row (Top) -->
       <div class="flex items-center justify-between w-full">
         <span class="text-xs font-semibold text-gray-300">Invisible Mode</span>

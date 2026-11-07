@@ -1,5 +1,7 @@
 # Dependency directories
 node_modules/
+dist/
+build/
 
 # API keys and private credentials
 groq.apikeys.txt

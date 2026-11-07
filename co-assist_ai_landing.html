@@ -49,7 +49,7 @@
             </button>
           </div>
           
-          <!-- Content block: Toggle + tight explanation -->
+          <!-- Content block: Invisible Mode Toggle + tight explanation -->
           <div class="flex flex-col space-y-1.5 w-full">
             <!-- Invisible Mode Row -->
             <div class="flex items-center justify-between w-full">
@@ -63,6 +63,43 @@
 
             <!-- Explanation -->
             <p class="text-sm text-gray-500 font-normal leading-normal">Hides the app window from screenshots and screen sharing.</p>
+          </div>
+
+          <!-- Content block: Start Session Countdown Dropdown + tight explanation -->
+          <div class="flex flex-col space-y-1.5 w-full">
+            <div class="flex items-center justify-between w-full">
+              <span class="text-sm font-semibold text-gray-200">Start Session</span>
+              <!-- Custom styled countdown dropdown trigger -->
+              <div class="relative">
+                <div id="countdown-dropdown" class="flex items-center justify-between space-x-2 border border-theme-border rounded-lg px-2.5 py-1.5 cursor-pointer select-none hover:border-gray-500 transition-colors" style="background-color: #1a1a1a; min-width: 105px;">
+                  <span id="countdown-value" class="text-xs text-white font-medium">5s</span>
+                  <img src="https://img.icons8.com/ios-filled/100/expand-arrow--v1.png" alt="arrow" class="w-2.5 h-2.5 icon-theme opacity-60 transition-transform duration-200" id="countdown-arrow">
+                </div>
+
+                <!-- Custom styled dropdown options -->
+                <div id="countdown-options" class="absolute right-0 top-full mt-1.5 border border-theme-border rounded-lg shadow-2xl z-50 hidden flex-col overflow-hidden" style="background-color: #131313; min-width: 115px;">
+                  <div class="countdown-option flex items-center justify-between px-3 py-2 text-xs text-white cursor-pointer transition-colors" data-value="0">
+                    <span>Immediately</span>
+                    <img src="https://img.icons8.com/fluency-systems-filled/96/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
+                  </div>
+                  <div class="countdown-option flex items-center justify-between px-3 py-2 text-xs text-white cursor-pointer transition-colors" data-value="3">
+                    <span>3s</span>
+                    <img src="https://img.icons8.com/fluency-systems-filled/96/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
+                  </div>
+                  <div class="countdown-option flex items-center justify-between px-3 py-2 text-xs text-white cursor-pointer transition-colors" data-value="5">
+                    <span>5s</span>
+                    <img src="https://img.icons8.com/fluency-systems-filled/96/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
+                  </div>
+                  <div class="countdown-option flex items-center justify-between px-3 py-2 text-xs text-white cursor-pointer transition-colors" data-value="10">
+                    <span>10s</span>
+                    <img src="https://img.icons8.com/fluency-systems-filled/96/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Explanation -->
+            <p class="text-sm text-gray-500 font-normal leading-normal">Countdown delay before the floating session launches.</p>
           </div>
         </div>
       </div>
@@ -313,7 +350,7 @@
               <!-- Descriptive Information Bullets (Scrollable Container) -->
               <div class="flex-grow overflow-y-auto custom-scroll pr-1 mt-4">
                 <span class="text-sm font-semibold text-gray-300">Model Selection Guide</span>
-                <p class="text-sm text-gray-400 font-normal mt-1 mb-2">These models are based on the latest available Groq production and active developer models. <a href="#" id="view-models-link" class="text-blue-400 hover:underline ml-1">view models<img src="https://img.icons8.com/external-jumpicon-line-ayub-irawan/64/external-arrow-arrows-jumpicon-line-jumpicon-line-ayub-irawan-39.png" alt="arrow" class="w-3.5 h-3.5 ml-0.5 inline-block align-middle" style="filter: invert(58%) sepia(84%) saturate(849%) hue-rotate(189deg) brightness(101%) contrast(97%);"></a></p>
+                <p class="text-sm text-gray-400 font-normal mt-1 mb-2">Powered by Groq's latest production and developer models. <a href="#" id="view-models-link" class="text-blue-400 hover:underline ml-1">view models<img src="https://img.icons8.com/external-jumpicon-line-ayub-irawan/64/external-arrow-arrows-jumpicon-line-jumpicon-line-ayub-irawan-39.png" alt="arrow" class="w-3.5 h-3.5 ml-0.5 inline-block align-middle" style="filter: invert(58%) sepia(84%) saturate(849%) hue-rotate(189deg) brightness(101%) contrast(97%);"></a></p>
                 <ul class="list-disc pl-4 space-y-3.5 text-sm text-gray-400 mt-2 font-normal">
                   <li>
                     <strong>openai/gpt-oss-120b:</strong> Flagship open-weight 120B reasoning model (MoE) for complex software engineering interviews, advanced algorithms, and deep math logic. Features a 131k context window and a 65k max output limit.

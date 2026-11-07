@@ -123,43 +123,10 @@ body {
   }
 }
 
-@media (max-width: 310px) {
-  #control-bar {
-    padding: 0 8px;
-    gap: 8px;
-  }
-  #control-bar button {
-    width: 28px !important;
-    height: 28px !important;
-  }
-  #control-bar button img {
-    width: 14px !important;
-    height: 14px !important;
-  }
-  #audio-wave-gif {
-    width: 24px !important;
-    height: 24px !important;
-  }
-  #session-timer {
-    font-size: 11px !important;
-  }
-  #chat-panel {
-    border-radius: 12px !important;
-  }
-  #chat-input-wrapper {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    padding-top: 4px !important;
-    padding-bottom: 4px !important;
-  }
-  #send-btn, #screenshot-btn {
-    width: 28px !important;
-    height: 28px !important;
-  }
-  #send-btn img, #screenshot-btn img {
-    width: 14px !important;
-    height: 14px !important;
-  }
+#session-timer {
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: center;
 }
 
 /* Color for message sender labels (Me, AI Respond, Interviewer Question, AI Status) */
@@ -360,6 +327,10 @@ pre[class*="language-"] {
   border: 1.5px solid transparent !important;
 }
 
+.countdown-option:hover {
+  background-color: rgba(47, 47, 47, 0.6) !important;
+}
+
 #tab-info:hover {
   background-color: #3D3D3D !important;
 }
@@ -413,15 +384,15 @@ input:checked + .slider:before {
 
 /* Floating Menu Modal animation styles */
 #session-menu-modal {
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s !important;
-  transform: translateX(0);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s !important;
+  transform: translateY(0);
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
 }
 
 #session-menu-modal.collapsed-menu {
-  transform: translateX(-15px) !important;
+  transform: translateY(-8px) !important;
   opacity: 0 !important;
   pointer-events: none !important;
   visibility: hidden;

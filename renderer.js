@@ -16,6 +16,9 @@ const chatPanel = document.getElementById('chat-panel');
 const windowContainer = document.getElementById('widget-container');
 const audioWaveGif = document.getElementById('audio-wave-gif');
 const resizeHandle = document.getElementById('resize-handle');
+const controlBar = document.getElementById('control-bar');
+const menuBtn = document.getElementById('menu-btn');
+const sessionMenuModal = document.getElementById('session-menu-modal');
 
 let GEMINI_API_KEYS = [];
 let activeKeyIndex = 0;
@@ -254,9 +257,10 @@ function formatMarkdown(text) {
   return html;
 }
 
-// App configuration
-const VOLUME_THRESHOLD = 5;     // Sound level threshold (out of 255)
-const SILENCE_DURATION = 900;    // 0.9 seconds of silence before stopping recording
+// AI Audio & Voice Activity Detection (VAD) Configuration
+const SILENCE_DURATION = 2800;         // 2.8s natural pause buffer so Gemini TTS paragraph pauses do not cut off speech
+const MAX_RECORDING_DURATION = 60000;  // 60s ceiling for long complex multi-paragraph interview questions
+const MIN_RECORDING_DURATION = 800;    // Minimum 0.8s of audio to qualify
 
 // State management
 let audioStream = null;
@@ -273,9 +277,49 @@ let isMuted = false;             // Toggle to temporarily disable auto-listening
 let silenceTimer = null;
 let voiceSustainedTimer = null;  // For debouncing short notification sounds
 let isProcessingResponse = false; // Prevent recording new sounds while Gemini is responding
+let baselineNoiseFloor = 12;     // Dynamically adapts to ambient/game background audio
+let maxRecordingTimer = null;    // Hard timeout safety valve
+let recordingStartTime = 0;      // Track how long the current recording has run
+let accumulatedQuestion = "";    // Stitches split sentences when user pauses between clauses
 let isExpanded = false;
 let chatPanelWidth = 680;
 let chatPanelHeight = 260;
+
+function updateWindowSize(animate = false) {
+  const cb = controlBar || document.getElementById('control-bar');
+  const cbRect = cb ? cb.getBoundingClientRect() : null;
+  const cbWidth = cbRect && cbRect.width > 0 ? Math.ceil(cbRect.width) : 272;
+  const cbHeight = cbRect && cbRect.height > 0 ? Math.ceil(cbRect.height) : 50;
+  const smm = sessionMenuModal || document.getElementById('session-menu-modal');
+  const isMenuOpen = smm && !smm.classList.contains('collapsed-menu');
+  const sessionModelOptions = document.getElementById('session-model-options');
+  const isOptionsOpen = sessionModelOptions && !sessionModelOptions.classList.contains('hidden');
+
+  let width, height;
+
+  if (isExpanded) {
+    // Flush against the chat panel (or control bar if panel is narrower) with zero outer padding
+    const contentWidth = Math.max(chatPanelWidth, cbWidth);
+    width = Math.round(contentWidth);
+    let minNeededHeight = cbHeight + 12 + chatPanelHeight;
+    if (isMenuOpen) {
+      const menuHeight = isOptionsOpen ? 260 : 130;
+      minNeededHeight = Math.max(minNeededHeight, cbHeight + 8 + menuHeight);
+    }
+    height = Math.round(minNeededHeight);
+  } else {
+    // Collapsed pill mode: flush against the control bar with zero outer padding
+    width = Math.round(cbWidth);
+    if (isMenuOpen) {
+      const menuHeight = isOptionsOpen ? 260 : 130;
+      height = Math.round(cbHeight + 8 + menuHeight);
+    } else {
+      height = Math.round(cbHeight);
+    }
+  }
+
+  ipcRenderer.send('resize-window', { width, height, animate });
+}
 
 // Initialize Session Duration Timer
 let startTime = Date.now();
@@ -354,8 +398,6 @@ window.addEventListener('keydown', (e) => {
 
 expandToggleBtn.addEventListener('click', () => {
   isExpanded = !isExpanded;
-  const winWidth = Math.max(chatPanelWidth + 40, 800);
-  const isMenuOpen = sessionMenuModal && !sessionMenuModal.classList.contains('hidden');
 
   if (isExpanded) {
     chatPanel.classList.remove('collapsed-panel');
@@ -365,18 +407,17 @@ expandToggleBtn.addEventListener('click', () => {
     chatPanel.style.width = `${chatPanelWidth}px`;
     chatPanel.style.height = `${chatPanelHeight}px`;
     
-    // Resize Electron window to fit expanded layout
-    ipcRenderer.send('resize-window', { width: winWidth, height: chatPanelHeight + 120 });
+    // Resize Electron window dynamically to fit expanded layout
+    updateWindowSize(false);
   } else {
     chatPanel.classList.add('collapsed-panel');
     chevronIcon.style.transform = 'rotate(0deg)';
     
-    // Wait for the CSS transition (300ms) to finish before shrinking the Electron window height
+    // Wait for the CSS transition (300ms) to finish before shrinking the Electron window
     setTimeout(() => {
       if (!isExpanded) {
-        const currentIsMenuOpen = sessionMenuModal && !sessionMenuModal.classList.contains('hidden');
-        const winHeight = currentIsMenuOpen ? 120 : 68;
-        ipcRenderer.send('resize-window', { width: winWidth, height: winHeight });
+        updateWindowSize(false);
+        if (typeof positionMenuModal === 'function') positionMenuModal();
       }
     }, 300);
   }
@@ -754,25 +795,25 @@ async function startSystemAudioCapture() {
   }
 }
 
-// Web Audio API analysis setup
+// Web Audio API analysis setup with Voice Frequency Bandpass
 function initAudioAnalysis(stream) {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
   analyser = audioContext.createAnalyser();
-  analyser.fftSize = 256;
+  analyser.fftSize = 512; // 256 frequency bins for finer frequency resolution
   const bufferLength = analyser.frequencyBinCount;
   dataArray = new Uint8Array(bufferLength);
   
   sourceNode = audioContext.createMediaStreamSource(stream);
 
-  // 1. Highpass filter to cut out low rumbling hums below 80Hz
+  // 1. Highpass filter to eliminate sub-bass rumbles & game bass beats below 100Hz
   const hpFilter = audioContext.createBiquadFilter();
   hpFilter.type = 'highpass';
-  hpFilter.frequency.value = 80;
+  hpFilter.frequency.value = 100;
 
-  // 2. Lowpass filter to cut out high notification pings above 3000Hz
+  // 2. Lowpass filter to cut out high-frequency synth bells & laser SFX above 3400Hz
   const lpFilter = audioContext.createBiquadFilter();
   lpFilter.type = 'lowpass';
-  lpFilter.frequency.value = 3000;
+  lpFilter.frequency.value = 3400;
 
   // Connect stream -> HP filter -> LP filter -> Analyser
   sourceNode.connect(hpFilter);
@@ -782,7 +823,7 @@ function initAudioAnalysis(stream) {
   monitorVolume();
 }
 
-// Continuous volume monitoring loop
+// Continuous Voice Activity Detection (VAD) & Adaptive Noise Loop
 function monitorVolume() {
   if (!analyser || isMuted || isProcessingResponse) {
     requestAnimationFrame(monitorVolume);
@@ -791,20 +832,36 @@ function monitorVolume() {
   
   analyser.getByteFrequencyData(dataArray);
   
-  let sum = 0;
+  // Isolate human vocal formant energy (~180Hz to ~2800Hz, bins 2 to 30)
+  let vocalSum = 0;
+  let vocalBins = 0;
+  let totalSum = 0;
   let maxVal = 0;
+  
   for (let i = 0; i < dataArray.length; i++) {
-    sum += dataArray[i];
-    if (dataArray[i] > maxVal) {
-      maxVal = dataArray[i];
+    const val = dataArray[i];
+    totalSum += val;
+    if (val > maxVal) maxVal = val;
+    
+    if (i >= 2 && i <= 30) {
+      vocalSum += val;
+      vocalBins++;
     }
   }
-  const averageVolume = sum / dataArray.length;
   
-  // Calculate spectral concentration (pure tones like bells/chimes have high concentration)
-  const concentration = sum > 0 ? (maxVal / sum) : 0;
-  if (concentration > 0.22) {
-    // Pure tone detected (notification chime, bell, or bleep), cancel voice trigger
+  const vocalEnergy = vocalBins > 0 ? (vocalSum / vocalBins) : 0;
+  
+  // Adaptive baseline noise floor:
+  // When NOT recording, smoothly track background audio (Roblox music, ambient sounds)
+  if (!isRecording) {
+    baselineNoiseFloor = baselineNoiseFloor * 0.96 + vocalEnergy * 0.04;
+    if (baselineNoiseFloor < 6) baselineNoiseFloor = 6;
+    if (baselineNoiseFloor > 60) baselineNoiseFloor = 60;
+  }
+  
+  // Calculate spectral concentration (pure tones like bells/beeps have high concentration)
+  const concentration = totalSum > 0 ? (maxVal / totalSum) : 0;
+  if (concentration > 0.24) {
     if (!isRecording && voiceSustainedTimer) {
       clearTimeout(voiceSustainedTimer);
       voiceSustainedTimer = null;
@@ -814,35 +871,42 @@ function monitorVolume() {
     return;
   }
 
-  if (averageVolume > VOLUME_THRESHOLD) {
-    // Clear silence timer if it was running
+  // Voice threshold dynamically adapts above the current background noise floor
+  const voiceTriggerThreshold = Math.max(14, baselineNoiseFloor + 8);
+  const voiceSustainThreshold = Math.max(8, baselineNoiseFloor + 2.0);
+
+  const isVoiceActive = vocalEnergy > (isRecording ? voiceSustainThreshold : voiceTriggerThreshold);
+
+  if (isVoiceActive) {
+    // Human voice detected! Clear silence timer if it was running
     if (silenceTimer) {
       clearTimeout(silenceTimer);
       silenceTimer = null;
     }
 
     if (!isRecording) {
-      // Debounce transient sounds (must stay above threshold for 300ms to trigger)
+      // Debounce transient noises: voice must be sustained for 240ms to trigger
       if (!voiceSustainedTimer) {
         voiceSustainedTimer = setTimeout(() => {
           startRecording();
           voiceSustainedTimer = null;
-        }, 300);
+        }, 240);
       }
-      updateStatus("Sound detected...", 'listening');
+      updateStatus("Voice detected...", 'listening');
     } else {
-      updateStatus("Recording sound...", 'listening');
+      updateStatus("Listening to question...", 'listening');
     }
   } else {
-    // If volume fell below threshold, cancel any pending recording trigger
+    // Sound fell back to ambient baseline
     if (!isRecording && voiceSustainedTimer) {
       clearTimeout(voiceSustainedTimer);
       voiceSustainedTimer = null;
       updateStatus("Listening for sound...", 'listening');
     }
 
+    // If recording is active and voice stopped, start the silence turnaround timer
     if (isRecording && !silenceTimer) {
-      updateStatus("Processing in 1.5s...", 'listening');
+      updateStatus("Processing question...", 'listening');
       silenceTimer = setTimeout(() => {
         stopRecording();
       }, SILENCE_DURATION);
@@ -854,10 +918,21 @@ function monitorVolume() {
 
 // Start active recording block
 function startRecording() {
+  if (isRecording) return;
   isRecording = true;
+  recordingStartTime = Date.now();
   recordedChunks = [];
-  updateStatus("Recording sound...", 'listening');
+  updateStatus("Listening to question...", 'listening');
   
+  // Hard ceiling: An interview question should never exceed MAX_RECORDING_DURATION (60s)
+  if (maxRecordingTimer) clearTimeout(maxRecordingTimer);
+  maxRecordingTimer = setTimeout(() => {
+    if (isRecording) {
+      console.log("Max question duration reached (60s cap). Automatically finalizing audio.");
+      stopRecording();
+    }
+  }, MAX_RECORDING_DURATION);
+
   try {
     mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
     mediaRecorder.ondataavailable = (e) => {
@@ -867,6 +942,12 @@ function startRecording() {
     };
     
     mediaRecorder.onstop = async () => {
+      const audioDuration = Date.now() - recordingStartTime;
+      // If the audio was shorter than 800ms, it was likely an accidental click or cough
+      if (audioDuration < MIN_RECORDING_DURATION) {
+        console.log(`Audio chunk too short (${audioDuration}ms). Ignored.`);
+        return;
+      }
       const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
       processAudioAndQueryGemini(audioBlob);
     };
@@ -875,17 +956,89 @@ function startRecording() {
   } catch (err) {
     console.error("Failed to start MediaRecorder:", err);
     isRecording = false;
+    if (maxRecordingTimer) {
+      clearTimeout(maxRecordingTimer);
+      maxRecordingTimer = null;
+    }
   }
 }
 
 // Stop active recording block
 function stopRecording() {
   isRecording = false;
-  silenceTimer = null;
+  if (silenceTimer) {
+    clearTimeout(silenceTimer);
+    silenceTimer = null;
+  }
+  if (maxRecordingTimer) {
+    clearTimeout(maxRecordingTimer);
+    maxRecordingTimer = null;
+  }
   
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   }
+}
+
+// Validates that the audio is genuine spoken speech and not game noises, beeps, music, or fillers
+function isUnwantedNoiseOrFiller(text) {
+  if (!text) return true;
+  const clean = text.trim();
+  const lower = clean.toLowerCase();
+  const cleanLower = lower.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").trim();
+
+  // 1. Explicit sound effects, beeps, bells, chimes
+  if (/\b(beep|beeps|ding|chime|ring|ringing|bell|bells|buzzer|buzz|ping|pings|click|clicks|tick|ticking|oops|oof|sound effect)\b/i.test(lower)) {
+    return true;
+  }
+
+  // 2. Music tags or music note symbols (e.g. "[Music]", "[Applause]", "♪")
+  if (/^(\[.*\]|\(.*\)|[♪♫\s\W])+$|^(\[.*(music|applause|laughter|cheer|chime|sound|noise|cough|sigh|instrumental).*\]|\(.*\)|[♪♫\s]+)+$/i.test(clean)) {
+    return true;
+  }
+  if (/[♪♫]/.test(clean)) {
+    return true;
+  }
+
+  // 3. Known Whisper hallucinations on silence / ambient tracks
+  const hallucinations = [
+    "thank you", "you", "thank you for watching", "thanks for watching", "bye", "goodbye",
+    "go ahead", "subtitle by", "subtitles by", "please subscribe", "like and subscribe",
+    "so", "yeah", "okay", "oh", "ah"
+  ];
+  if (hallucinations.includes(cleanLower)) {
+    return true;
+  }
+
+  // 4. Cyrillic letters (foreign credit hallucination loops)
+  if (/[а-яА-Я]/g.test(clean)) {
+    return true;
+  }
+
+  // 5. Casual non-question conversation fillers (e.g. "I'm going to take a break")
+  const casualFillers = [
+    /^i'm going to (go ahead and )?(get|take) (a|a little bit of a) break/i,
+    /^let's take a break/i,
+    /^i'm going to go ahead and get it/i,
+    /^i'm going to get it/i
+  ];
+  for (const regex of casualFillers) {
+    if (regex.test(lower)) return true;
+  }
+
+  // 6. Pure sound repetition (e.g. "la la la" or "ha ha ha")
+  const words = cleanLower.split(/\s+/).filter(Boolean);
+  const uniqueWords = new Set(words);
+  if (words.length >= 4 && uniqueWords.size <= 2) {
+    return true;
+  }
+
+  // 7. Too short to be any spoken sentence (under 4 chars or under 2 words)
+  if (cleanLower.length < 4 || words.length < 2) {
+    return true;
+  }
+
+  return false; // Genuine spoken question or prompt!
 }
 
 // Send Audio to Groq API (Whisper for STT, Llama for completions)
@@ -898,10 +1051,6 @@ async function processAudioAndQueryGemini(audioBlob) {
   }
   activeAbortController = new AbortController();
 
-  const { msgDiv: statusIndicator } = appendMessage("[Transcribing audio...]", 'user', 'Interviewer Question');
-  const { msgDiv: replyBubble, labelDiv } = appendMessage("Thinking...", 'ai', getActiveKeyLabel());
-  scrollToBottom();
-  
   isProcessingResponse = true;
   updateStatus("Analyzing audio...", 'thinking');
   
@@ -911,18 +1060,18 @@ async function processAudioAndQueryGemini(audioBlob) {
     const currentType = GEMINI_API_KEYS[activeKeyIndex] ? GEMINI_API_KEYS[activeKeyIndex].type : 'primary';
 
     if (!currentKey) {
-      if (statusIndicator) statusIndicator.remove();
-      replyBubble.innerText = "Error: No API Key available. Please configure keys in Settings.";
+      isProcessingResponse = false;
+      updateStatus("Listening for sound...", 'listening');
       break;
     }
 
     try {
       // 1. Fetch Audio Transcription using Whisper
-      updateStatus("Transcribing audio...", 'thinking');
       const formData = new FormData();
       formData.append('file', audioBlob, 'audio.webm');
       formData.append('model', 'whisper-large-v3-turbo');
-      formData.append('language', 'en'); // Force English output
+      formData.append('language', 'en');
+      formData.append('temperature', '0');
 
       const transResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
         method: 'POST',
@@ -938,7 +1087,7 @@ async function processAudioAndQueryGemini(audioBlob) {
         const failStatus = transResponse.status === 429 ? 'rate-limited' : 'invalid';
         ipcRenderer.send('set-key-status', { keyType: currentType, status: failStatus });
 
-        if ((transResponse.status === 429 || transResponse.status === 400) && rotateApiKey(labelDiv)) {
+        if ((transResponse.status === 429 || transResponse.status === 400) && rotateApiKey()) {
           continue; // Retry loop with next key
         }
         throw new Error(`Whisper Transcription HTTP ${transResponse.status}: ${errText}`);
@@ -948,40 +1097,23 @@ async function processAudioAndQueryGemini(audioBlob) {
       const transcribedText = (transData.text || "").trim();
       
       if (!transcribedText) {
-        // No speech detected
-        if (statusIndicator) statusIndicator.parentNode.remove();
-        if (replyBubble) replyBubble.parentNode.remove();
         success = true;
         break;
       }
 
-      // WHISPER HALLUCINATION FILTER
-      const cleanTextLower = transcribedText.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").trim();
-      const hallucinations = [
-        "thank you",
-        "you",
-        "продолжение следует",
-        "thanks for watching",
-        "bye",
-        "go ahead",
-        "subtitle by"
-      ];
-
-      // Check for Cyrillic letters (e.g. Russian credit hallucinations)
-      const hasCyrillic = /[а-яА-Я]/g.test(transcribedText);
-
-      if (cleanTextLower.length < 4 || hallucinations.includes(cleanTextLower) || /^[0-9\s]*$/.test(cleanTextLower) || hasCyrillic) {
-        console.log(`Discarded Whisper Hallucination/Tone: "${transcribedText}"`);
-        if (statusIndicator) statusIndicator.parentNode.remove();
-        if (replyBubble) replyBubble.parentNode.remove();
+      // 2. Validate that the transcribed text is genuine speech and not beeps, bells, music, or fillers
+      if (isUnwantedNoiseOrFiller(transcribedText)) {
+        console.log(`[Noise Filter] Discarded non-speech / noise / filler: "${transcribedText}"`);
         success = true;
         break;
       }
 
-      // Update user bubble with final transcription
-      statusIndicator.innerText = transcribedText;
+      // 3. Genuine Spoken Question Validated! NOW append messages to the chat DOM
+      const { msgDiv: statusIndicator } = appendMessage(transcribedText, 'user', 'Interviewer Question');
+      const { msgDiv: replyBubble, labelDiv } = appendMessage("Thinking...", 'ai', getActiveKeyLabel());
+      scrollToBottom();
 
-      // 2. Query Llama 3.3 for the response
+      // 4. Query LLM for the response
       updateStatus("Analyzing response...", 'thinking');
       await loadSystemInstructions();
       const url = `https://api.groq.com/openai/v1/chat/completions`;
@@ -1027,30 +1159,16 @@ async function processAudioAndQueryGemini(audioBlob) {
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log("Request aborted.");
-        if (statusIndicator && statusIndicator.innerText === "[Transcribing audio...]") {
-          statusIndicator.remove();
-        }
-        if (replyBubble) replyBubble.innerText = "[Interrupted]";
         break;
       }
 
       const failStatus = error.message.includes("429") ? 'rate-limited' : 'invalid';
       ipcRenderer.send('set-key-status', { keyType: currentType, status: failStatus });
 
-      if (rotateApiKey(labelDiv)) {
+      if (rotateApiKey()) {
         continue; // Retry loop with next key
       }
-      if (statusIndicator && statusIndicator.innerText === "[Transcribing audio...]") {
-        statusIndicator.remove();
-      }
-      if (replyBubble) {
-        if (error.message.includes("429")) {
-          replyBubble.innerText = "⚠️ Groq API Rate Limit Exceeded (HTTP 429). All API Keys have reached their limits. Please wait about 1 minute and try again.";
-        } else {
-          replyBubble.innerText = "Error processing audio: " + error.message;
-        }
-      }
-      break; // Exit retry loop
+      break;
     }
   }
 
@@ -1076,9 +1194,9 @@ if (listenBtn) {
 }
 
 // Drag Resizing Logic for Chat Panel (Adjust limits here!)
-const MIN_PANEL_WIDTH = 190;   // Minimum width allowed
+const MIN_PANEL_WIDTH = 272;   // Minimum width allowed (matches control bar width)
 const MAX_PANEL_WIDTH = 1500;  // Maximum width allowed
-const MIN_PANEL_HEIGHT = 300;  // Minimum height allowed
+const MIN_PANEL_HEIGHT = 180;  // Minimum height allowed
 const MAX_PANEL_HEIGHT = 1000;  // Maximum height allowed
 
 let isResizing = false;
@@ -1125,14 +1243,8 @@ function handleMouseMove(e) {
       chatPanel.style.width = `${chatPanelWidth}px`;
       chatPanel.style.height = `${chatPanelHeight}px`;
       
-      const winWidth = Math.max(chatPanelWidth + 40, 800);
-
-      // Resize Electron window to fit layout instantly (animate: false)
-      ipcRenderer.send('resize-window', { 
-        width: winWidth, 
-        height: chatPanelHeight + 120, 
-        animate: false 
-      });
+      // Resize Electron window dynamically to hug the chat panel
+      updateWindowSize(false);
       
       if (typeof positionMenuModal === 'function') {
         positionMenuModal();
@@ -1155,21 +1267,32 @@ function handleMouseUp() {
   // Re-enable smooth transition animations
   chatPanel.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
   
+  updateWindowSize(false);
+  
   document.removeEventListener('mousemove', handleMouseMove);
   document.removeEventListener('mouseup', handleMouseUp);
 }
 
 // Session control-bar menu modal positioning and logic
-const menuBtn = document.getElementById('menu-btn');
-const sessionMenuModal = document.getElementById('session-menu-modal');
-
 function positionMenuModal() {
-  if (sessionMenuModal && !sessionMenuModal.classList.contains('collapsed-menu')) {
-    const controlBar = document.getElementById('control-bar');
-    if (controlBar) {
-      const cbRect = controlBar.getBoundingClientRect();
-      sessionMenuModal.style.left = `${cbRect.right + 12}px`;
-      sessionMenuModal.style.top = `${cbRect.top}px`;
+  const smm = sessionMenuModal || document.getElementById('session-menu-modal');
+  if (smm && !smm.classList.contains('collapsed-menu')) {
+    const cb = controlBar || document.getElementById('control-bar');
+    if (cb) {
+      const cbRect = cb.getBoundingClientRect();
+      const modalWidth = smm.offsetWidth || 250;
+      // Center horizontally relative to the window
+      const winWidth = window.innerWidth || (cbRect.width > 0 ? cbRect.width : 272);
+      const leftPos = Math.max(0, Math.round((winWidth - modalWidth) / 2));
+      
+      // Align top with the chat panel (which sits at cbRect.bottom + 12px)
+      const cp = chatPanel || document.getElementById('chat-panel');
+      const topPos = isExpanded && cp && cp.offsetHeight > 0 
+        ? Math.round(cp.getBoundingClientRect().top) 
+        : Math.round(cbRect.bottom + 12);
+
+      smm.style.left = `${leftPos}px`;
+      smm.style.top = `${topPos}px`;
     }
   }
 }
@@ -1183,12 +1306,7 @@ if (menuBtn && sessionMenuModal) {
     if (isClosed) {
       sessionMenuModal.classList.remove('collapsed-menu');
       positionMenuModal();
-      
-      // If collapsed, expand height to 120px to fit menu modal
-      if (!isExpanded) {
-        const winWidth = Math.max(chatPanelWidth + 40, 800);
-        ipcRenderer.send('resize-window', { width: winWidth, height: 120, animate: false });
-      }
+      updateWindowSize(false);
     } else {
       sessionMenuModal.classList.add('collapsed-menu');
       
@@ -1199,11 +1317,7 @@ if (menuBtn && sessionMenuModal) {
       }
       if (sessionModelArrow) sessionModelArrow.style.transform = '';
 
-      // If collapsed, shrink height back to normal 68px
-      if (!isExpanded) {
-        const winWidth = Math.max(chatPanelWidth + 40, 800);
-        ipcRenderer.send('resize-window', { width: winWidth, height: 68, animate: false });
-      }
+      updateWindowSize(false);
     }
   });
 
@@ -1220,22 +1334,12 @@ if (menuBtn && sessionMenuModal) {
         sessionModelOptions.classList.remove('hidden');
         sessionModelOptions.classList.add('flex');
         if (sessionModelArrow) sessionModelArrow.style.transform = 'rotate(180deg)';
-        
-        // If collapsed, expand height to 260px to prevent clipping the options list
-        if (!isExpanded) {
-          const winWidth = Math.max(chatPanelWidth + 40, 800);
-          ipcRenderer.send('resize-window', { width: winWidth, height: 260, animate: false });
-        }
+        updateWindowSize(false);
       } else {
         sessionModelOptions.classList.add('hidden');
         sessionModelOptions.classList.remove('flex');
         if (sessionModelArrow) sessionModelArrow.style.transform = '';
-        
-        // If collapsed, shrink height back to 120px
-        if (!isExpanded) {
-          const winWidth = Math.max(chatPanelWidth + 40, 800);
-          ipcRenderer.send('resize-window', { width: winWidth, height: 120, animate: false });
-        }
+        updateWindowSize(false);
       }
     });
 
@@ -1246,10 +1350,8 @@ if (menuBtn && sessionMenuModal) {
         sessionModelOptions.classList.remove('flex');
         if (sessionModelArrow) sessionModelArrow.style.transform = '';
         
-        // If collapsed and dropdown was open, shrink height back to 120px
-        if (wasOpen && !isExpanded) {
-          const winWidth = Math.max(chatPanelWidth + 40, 800);
-          ipcRenderer.send('resize-window', { width: winWidth, height: 120, animate: false });
+        if (wasOpen) {
+          updateWindowSize(false);
         }
       }
     });
@@ -1271,11 +1373,7 @@ if (menuBtn && sessionMenuModal) {
         sessionModelOptions.classList.remove('flex');
         if (sessionModelArrow) sessionModelArrow.style.transform = '';
 
-        // If collapsed, shrink height back to 120px
-        if (!isExpanded) {
-          const winWidth = Math.max(chatPanelWidth + 40, 800);
-          ipcRenderer.send('resize-window', { width: winWidth, height: 120, animate: false });
-        }
+        updateWindowSize(false);
 
         // Auto-save immediately to database
         const updatedDb = await ipcRenderer.invoke('save-selected-model', val);
@@ -1328,9 +1426,10 @@ async function initSessionModelDropdown() {
     updateSessionCheckmarks('openai/gpt-oss-120b');
   }
 
-  // Initialize invisible mode toggle state
-  if (sessionInvisibleToggle && db) {
-    sessionInvisibleToggle.checked = !!db.settings.invisibleMode;
+  // Initialize invisible mode toggle state (defaults to true if undefined)
+  if (sessionInvisibleToggle) {
+    const isInv = db && db.settings && db.settings.invisibleMode !== undefined ? !!db.settings.invisibleMode : true;
+    sessionInvisibleToggle.checked = isInv;
   }
 }
 
@@ -1361,8 +1460,8 @@ ipcRenderer.on('window-resized', positionMenuModal);
 
 // Auto-start capture on app launch
 window.addEventListener('DOMContentLoaded', async () => {
-  // Set initial window size for collapsed state
-  ipcRenderer.send('resize-window', { width: 800, height: 68 });
+  // Set initial dynamic window size for collapsed state
+  updateWindowSize(false);
   
   // Initialize the session model switcher
   await initSessionModelDropdown();

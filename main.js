@@ -37,7 +37,10 @@ function initDatabase() {
           fileName: "",
           content: ""
         },
-        contexts: []
+        contexts: [],
+        selectedModel: "openai/gpt-oss-120b",
+        invisibleMode: true,
+        countdownDuration: 5
       },
       apiUsageHistory: {
         primary: {},
@@ -62,6 +65,23 @@ function readDatabase() {
       data = data.slice(1);
     }
     const db = JSON.parse(data);
+
+    // Apply defaults if fields are missing
+    if (db && db.settings) {
+      let changed = false;
+      if (db.settings.invisibleMode === undefined) {
+        db.settings.invisibleMode = true;
+        changed = true;
+      }
+      if (db.settings.countdownDuration === undefined) {
+        db.settings.countdownDuration = 5;
+        changed = true;
+      }
+      if (changed) {
+        writeDatabase(db);
+      }
+    }
+
     return db;
   } catch (e) {
     console.error("Failed to read database:", e);
@@ -96,6 +116,7 @@ function createSessionsWindow() {
     height: windowHeight,
     x: x,
     y: y,
+    icon: path.join(__dirname, 'icon.ico'),
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -125,8 +146,8 @@ function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds;
 
-  const windowWidth = 720;
-  const windowHeight = 60; // Start collapsed (pill shape)
+  const windowWidth = 272;
+  const windowHeight = 50; // Start collapsed (pill shape)
 
   // Calculate coordinates to place it top-center
   const x = Math.round((screenWidth - windowWidth) / 2);
@@ -135,13 +156,16 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
+    minWidth: 100,
+    minHeight: 40,
     x: x,
     y: y,
+    icon: path.join(__dirname, 'icon.ico'),
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    skipTaskbar: true,
+    skipTaskbar: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -171,6 +195,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Set explicit Windows AppUserModelId for taskbar grouping & icon pinning
+  app.setAppUserModelId('com.coassist.ai');
+
   // Automatically grant permission and select the screen/audio source requested by renderer
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
     callback({
@@ -284,6 +311,13 @@ ipcMain.handle('delete-selected-model', (event) => {
   return db;
 });
 
+
+ipcMain.handle('save-countdown-duration', (event, duration) => {
+  const db = readDatabase();
+  db.settings.countdownDuration = duration;
+  writeDatabase(db);
+  return db;
+});
 
 ipcMain.on('save-api-key', (event, { type, key }) => {
   const db = readDatabase();
