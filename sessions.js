@@ -77,7 +77,10 @@ if (startSessionBtn) {
 
     // Validate if at least the Primary API key is present
     if (!localDb || !localDb.settings.apiKey) {
-      alert("Please enter and save a Primary Gemini API Key first!");
+      if (apiKeyModal) {
+        apiKeyModal.classList.remove('hidden');
+        apiKeyModal.classList.add('flex');
+      }
       return;
     }
 
@@ -292,7 +295,11 @@ if (saveKeyBtn) {
     const btnText = saveKeyBtn.innerText;
     if (btnText === "Save") {
       const key = apiKeyInput.value.trim();
-      if (!key) { alert("Please enter a valid API Key first!"); return; }
+      if (!key) {
+        apiKeyInput.focus();
+        apiKeyInput.placeholder = "Please enter an API Key first...";
+        return;
+      }
       ipcRenderer.send('save-api-key', { type: 'primary', key });
     } else if (btnText === "Remove") {
       ipcRenderer.send('save-api-key', { type: 'primary', key: "" });
@@ -305,7 +312,11 @@ if (saveKeyBtnBackup1) {
     const btnText = saveKeyBtnBackup1.innerText;
     if (btnText === "Save") {
       const key = apiKeyInputBackup1.value.trim();
-      if (!key) { alert("Please enter a valid API Key first!"); return; }
+      if (!key) {
+        apiKeyInputBackup1.focus();
+        apiKeyInputBackup1.placeholder = "Please enter an API Key first...";
+        return;
+      }
       ipcRenderer.send('save-api-key', { type: 'backup1', key });
     } else if (btnText === "Remove") {
       ipcRenderer.send('save-api-key', { type: 'backup1', key: "" });
@@ -318,7 +329,11 @@ if (saveKeyBtnBackup2) {
     const btnText = saveKeyBtnBackup2.innerText;
     if (btnText === "Save") {
       const key = apiKeyInputBackup2.value.trim();
-      if (!key) { alert("Please enter a valid API Key first!"); return; }
+      if (!key) {
+        apiKeyInputBackup2.focus();
+        apiKeyInputBackup2.placeholder = "Please enter an API Key first...";
+        return;
+      }
       ipcRenderer.send('save-api-key', { type: 'backup2', key });
     } else if (btnText === "Remove") {
       ipcRenderer.send('save-api-key', { type: 'backup2', key: "" });
@@ -780,6 +795,47 @@ if (closeSettingsModalBtn && settingsModal) {
   closeSettingsModalBtn.addEventListener('click', () => {
     settingsModal.classList.add('hidden');
     settingsModal.classList.remove('flex');
+  });
+}
+
+if (settingsModal) {
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) {
+      settingsModal.classList.add('hidden');
+      settingsModal.classList.remove('flex');
+    }
+  });
+}
+
+// API Key Required Modal Interaction
+const apiKeyModal = document.getElementById('api-key-modal');
+const closeApiKeyModalBtn = document.getElementById('close-api-key-modal-btn');
+const goToApiKeysBtn = document.getElementById('go-to-api-keys-btn');
+
+if (closeApiKeyModalBtn && apiKeyModal) {
+  closeApiKeyModalBtn.addEventListener('click', () => {
+    apiKeyModal.classList.add('hidden');
+    apiKeyModal.classList.remove('flex');
+  });
+}
+
+if (goToApiKeysBtn && apiKeyModal) {
+  goToApiKeysBtn.addEventListener('click', () => {
+    apiKeyModal.classList.add('hidden');
+    apiKeyModal.classList.remove('flex');
+    if (tabKeys) tabKeys.click();
+    if (apiKeyInput) {
+      apiKeyInput.focus();
+    }
+  });
+}
+
+if (apiKeyModal) {
+  apiKeyModal.addEventListener('click', (e) => {
+    if (e.target === apiKeyModal) {
+      apiKeyModal.classList.add('hidden');
+      apiKeyModal.classList.remove('flex');
+    }
   });
 }
 
