@@ -92,19 +92,13 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 
 ### Running the Application
 
-Because Electron requires access to your physical monitor's interactive desktop window manager, launch the app directly from your normal desktop shell:
+Because Electron requires access to your physical monitor's interactive desktop window manager, launch the app directly:
 
-#### Option A: Quick Launch (Windows)
-Double-click the included **`start.bat`** file or press <kbd>Win</kbd> + <kbd>R</kbd> and run:
-```text
-start.bat
-```
-
-#### Option B: Standard Terminal
-Open a normal **PowerShell** or **Command Prompt** (outside of IDE sandboxes):
 ```powershell
 npm start
 ```
+
+Or download the pre-compiled installer from [GitHub Releases](https://github.com/marjhonie-siasol/co-assist-ai/releases) and double-click the desktop shortcut.
 
 ---
 

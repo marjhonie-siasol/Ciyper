@@ -5,13 +5,41 @@
   "description": "A floating AI copilot for live interviews and meetings",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build:win": "electron-builder --win"
   },
   "build": {
     "appId": "com.coassist.ai",
     "productName": "Co-Assist AI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "renderer.js",
+      "sessions.js",
+      "co-assist_ai_landing.html",
+      "co-assist_ai_session.html",
+      "style.css",
+      "prism.js",
+      "session.png",
+      "icon.png",
+      "icon.ico",
+      "package.json"
+    ],
     "win": {
-      "icon": "icon.ico"
+      "icon": "icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Co-Assist AI"
     }
   },
   "devDependencies": {
