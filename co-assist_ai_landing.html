@@ -11,32 +11,68 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
-<body class="overflow-hidden w-full h-full select-none">
+<body class="overflow-hidden w-full h-full">
   <div class="w-full h-full p-2 flex flex-col justify-start items-center">
     
     <!-- Full Width/Height Landscape Manager Card -->
     <div class="w-full h-full manager-card rounded-2xl flex flex-col overflow-hidden text-white relative">
       
       <!-- HEADER AREA -->
-      <header class="flex items-center justify-between px-5 py-4 border-b border-theme-border drag-handle">
+      <header class="flex items-center justify-between px-5 py-4 border-b border-theme-border drag-handle relative">
         <!-- Settings button -->
         <button id="settings-btn" class="w-6 h-6 hover:opacity-80 transition-opacity no-drag" title="Settings">
           <img src="https://img.icons8.com/fluency-systems-regular/96/settings--v1.png" alt="settings" class="w-5 h-5 icon-theme">
         </button>
         <!-- Center Text -->
-        <span class="text-sm font-semibold tracking-wide">Co-Assist AI</span>
-        <!-- Close button -->
-        <button id="close-btn" class="w-6 h-6 hover:opacity-80 transition-opacity no-drag" title="Close App">
-          <img src="https://img.icons8.com/ios-filled/100/delete-sign--v2.png" alt="close" class="w-5 h-5 icon-theme">
-        </button>
+        <span class="absolute left-1/2 transform -translate-x-1/2 text-sm font-semibold tracking-wide pointer-events-none">Co-Assist AI</span>
+        <!-- Window Controls -->
+        <div class="flex items-center space-x-3 no-drag">
+          <!-- Minimize button -->
+          <button id="minimize-btn" class="w-6 h-6 hover:opacity-80 transition-opacity flex items-center justify-center no-drag" title="Minimize">
+            <img src="https://img.icons8.com/fluency-systems-filled/96/minus-math.png" alt="minimize" class="w-4 h-4 icon-theme">
+          </button>
+          <!-- Close button -->
+          <button id="close-btn" class="w-6 h-6 hover:opacity-80 transition-opacity flex items-center justify-center no-drag" title="Close App">
+            <img src="https://img.icons8.com/ios-filled/100/delete-sign--v2.png" alt="close" class="w-5 h-5 icon-theme">
+          </button>
+        </div>
       </header>
+
+      <!-- Settings Overlay Modal (Absolute, centered, solid background) -->
+      <div id="settings-modal" class="absolute inset-0 bg-transparent z-50 hidden flex justify-center items-center p-4">
+        <div class="border border-theme-border rounded-2xl p-6 w-full max-w-sm flex flex-col space-y-5 shadow-2xl" style="background-color: #131313 !important; opacity: 1 !important;">
+          <!-- Top Row: Title & Close Button -->
+          <div class="flex items-center justify-between w-full">
+            <h3 class="text-sm font-semibold text-white">Settings</h3>
+            <button id="close-settings-modal-btn" class="hover:opacity-80 transition-opacity">
+              <img src="https://img.icons8.com/ios-filled/100/delete-sign--v2.png" alt="close" class="w-4 h-4 icon-theme">
+            </button>
+          </div>
+          
+          <!-- Content block: Toggle + tight explanation -->
+          <div class="flex flex-col space-y-1.5 w-full">
+            <!-- Invisible Mode Row -->
+            <div class="flex items-center justify-between w-full">
+              <span class="text-sm font-semibold text-gray-200">Invisible Mode</span>
+              <!-- Custom toggle switch -->
+              <label class="switch flex-shrink-0">
+                <input type="checkbox" id="invisible-mode-toggle">
+                <span class="slider"></span>
+              </label>
+            </div>
+
+            <!-- Explanation -->
+            <p class="text-sm text-gray-500 font-normal leading-normal">Hides the app window from screenshots and screen sharing.</p>
+          </div>
+        </div>
+      </div>
 
       <!-- MAIN CONTAINER -->
       <main class="flex-grow p-6 flex flex-col justify-start space-y-6 overflow-hidden">
         
         <!-- FIRST SECTION (Welcome & Start Session) -->
         <section class="flex items-center justify-between no-drag">
-          <p class="text-md text-gray-300 font-normal">Welcome to Co-Assist AI. your copilot assistant ai for interview or meeting.</p>
+          <p class="text-md text-gray-300 font-normal">Welcome, this is your <span class="text-white font-bold">Copilot Assistant AI</span> for interview or meeting.</p>
           <button id="start-session-btn" class="hover:opacity-90 rounded-full px-6 py-2 text-sm font-semibold tracking-wide transition-all active:scale-98" style="background-color: #FFFFFF; color: #131313;">
             Start Session
           </button>
@@ -45,11 +81,13 @@
         <!-- SECOND SECTION (Permanent API Analytics Graph Cards) -->
         <section class="flex flex-col space-y-2.5 no-drag">
           <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-              <span class="text-xs font-semibold text-gray-300">API Analytics</span>
-              <button id="analytics-info-btn" class="w-5 h-5 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity" title="API Analytics Information">
-                <img src="https://img.icons8.com/ios-glyphs/90/information.png" alt="info" class="w-3 h-3 icon-theme">
-              </button>
+            <div class="flex items-center">
+              <span class="text-sm font-semibold text-gray-300">API Analytics</span>
+            </div>
+            <!-- Active Model Indicator -->
+            <div class="flex items-center space-x-1.5">
+              <span class="text-xs font-semibold text-gray-300">Current Use Model:</span>
+              <span id="active-model-indicator" class="text-sm font-semibold" style="color: #9CA3AF; font-style: italic;">no model</span>
             </div>
           </div>
           
@@ -59,7 +97,7 @@
             <div class="flex flex-col p-3 rounded-xl bg-theme-btn border border-theme-border justify-between min-w-0">
               <div class="flex items-center justify-between mb-1.5">
                 <span class="text-sm font-semibold text-white">Primary Key</span>
-                <span id="analytics-status-primary" class="text-sm px-1.5 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">Unused</span>
+                <span id="analytics-status-primary" class="text-xs px-2 py-0.5 rounded-full text-gray-400 border border-gray-700" style="background-color: #131313; border-color: rgba(47, 47, 47, 0.6);">Unused</span>
               </div>
               <div class="text-sm text-gray-400 mb-1">Total Queries: <span id="analytics-total-primary" class="text-white font-semibold">0</span></div>
               <div class="h-20 border-b border-theme-border pb-1 relative" id="graph-primary"></div>
@@ -69,7 +107,7 @@
             <div class="flex flex-col p-3 rounded-xl bg-theme-btn border border-theme-border justify-between min-w-0">
               <div class="flex items-center justify-between mb-1.5">
                 <span class="text-sm font-semibold text-white">Backup Key 1</span>
-                <span id="analytics-status-backup1" class="text-sm px-1.5 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">Unused</span>
+                <span id="analytics-status-backup1" class="text-xs px-2 py-0.5 rounded-full text-gray-400 border border-gray-700" style="background-color: #131313; border-color: rgba(47, 47, 47, 0.6);">Unused</span>
               </div>
               <div class="text-sm text-gray-400 mb-1">Total Queries: <span id="analytics-total-backup1" class="text-white font-semibold">0</span></div>
               <div class="h-20 border-b border-theme-border pb-1 relative" id="graph-backup1"></div>
@@ -79,7 +117,7 @@
             <div class="flex flex-col p-3 rounded-xl bg-theme-btn border border-theme-border justify-between min-w-0">
               <div class="flex items-center justify-between mb-1.5">
                 <span class="text-sm font-semibold text-white">Backup Key 2</span>
-                <span id="analytics-status-backup2" class="text-sm px-1.5 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">Unused</span>
+                <span id="analytics-status-backup2" class="text-xs px-2 py-0.5 rounded-full text-gray-400 border border-gray-700" style="background-color: #131313; border-color: rgba(47, 47, 47, 0.6);">Unused</span>
               </div>
               <div class="text-sm text-gray-400 mb-1">Total Queries: <span id="analytics-total-backup2" class="text-white font-semibold">0</span></div>
               <div class="h-20 border-b border-theme-border pb-1 relative" id="graph-backup2"></div>
@@ -90,22 +128,15 @@
         <!-- THIRD SECTION (Tabs: Recent Session / My Files / API Keys) -->
         <section id="main-tabs-section" class="flex-grow flex flex-col min-h-0 space-y-4 no-drag">
           <!-- Tabs row -->
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between pb-1">
             <div class="flex items-center space-x-6">
               <button id="tab-recent" class="tab-btn active">Recent Session</button>
               <button id="tab-files" class="tab-btn">My Files</button>
               <button id="tab-keys" class="tab-btn">API Keys</button>
+              <button id="tab-models" class="tab-btn">AI Models</button>
             </div>
-            <!-- Info button for Recent Sessions (Visible by default) -->
-            <button id="recent-info-btn" class="w-5 h-5 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity" title="Recent Sessions Information">
-              <img src="https://img.icons8.com/ios-glyphs/90/information.png" alt="info" class="w-3 h-3 icon-theme">
-            </button>
-            <!-- Info button for API Keys (Only visible when tab-keys is active) -->
-            <button id="keys-info-btn" class="w-5 h-5 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity hidden" title="Security & Safety Info">
-              <img src="https://img.icons8.com/ios-glyphs/90/information.png" alt="info" class="w-3 h-3 icon-theme">
-            </button>
-            <!-- Info button for My Files (Only visible when tab-files is active) -->
-            <button id="files-info-btn" class="w-5 h-5 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity hidden" title="My Files Information">
+            <!-- General Info Tab Button -->
+            <button id="tab-info" class="w-5 h-5 rounded-full flex items-center justify-center transition-all cursor-pointer" title="Documentation & Help" style="border: none;">
               <img src="https://img.icons8.com/ios-glyphs/90/information.png" alt="info" class="w-3 h-3 icon-theme">
             </button>
           </div>
@@ -114,7 +145,7 @@
           <div class="flex-grow min-h-0 relative">
             
             <!-- PANEL 1: RECENT SESSIONS -->
-            <div id="panel-recent" class="absolute inset-0 flex flex-col overflow-y-auto custom-scroll space-y-2.5">
+            <div id="panel-recent" class="absolute inset-0 flex flex-col overflow-y-auto custom-scroll space-y-2.5 pr-6">
               <!-- Session 1 -->
               <div class="flex items-center justify-between p-3 rounded-lg bg-theme-btn border border-theme-border hover:border-gray-500 transition-colors">
                 <span class="text-sm font-normal">Session #1</span>
@@ -143,14 +174,14 @@
 
             <!-- PANEL 2: MY FILES (Hidden by default, flex layout when active) -->
             <div id="panel-files" class="absolute inset-0 hidden flex flex-col space-y-4 overflow-y-auto custom-scroll pr-2">
-              <!-- Top Row: Resume -->
-              <div class="flex flex-col space-y-2">
+              <!-- Top Section: Resume Context -->
+              <div class="flex flex-col space-y-2 pb-2">
                 <span class="text-xs font-semibold text-white">Resume Context</span>
-                <div class="flex items-center space-x-3">
-                  <button id="add-resume-btn" class="bg-theme-btn border border-theme-border hover:bg-gray-800 rounded-full px-4 py-1.5 text-xs font-semibold">
+                <div class="flex items-center space-x-2">
+                  <button id="add-resume-btn" class="bg-theme-btn border border-theme-border hover:bg-gray-800 rounded-full px-4 py-1.5 text-xs font-semibold shrink-0">
                     Add Resume
                   </button>
-                  <span id="resume-file-info" class="text-sm text-gray-500 font-medium font-normal">file must be .txt format</span>
+                  <span id="resume-file-info" class="text-xs text-gray-500 truncate font-normal">file must be .txt format</span>
                 </div>
               </div>
 
@@ -158,10 +189,7 @@
               <div class="flex flex-col min-h-0 flex-grow">
                 <!-- Sub tabs row -->
                 <div class="flex items-center justify-between pb-1.5 mb-2">
-                  <div class="flex items-center space-x-4">
-                    <button id="subtab-context" class="text-xs font-semibold pb-1 border-b-2 border-white text-white">Context</button>
-                    <button id="subtab-rules" class="text-xs font-semibold pb-1 text-gray-400 hover:text-white transition-colors">AI Rules</button>
-                  </div>
+                  <span class="text-xs font-semibold text-white">Context Files</span>
                   <!-- Add Plus Button -->
                   <button id="add-file-btn" class="w-5 h-5 hover:opacity-80 transition-opacity" title="Add File">
                     <img src="https://img.icons8.com/material-rounded/96/plus-math--v1.png" alt="add" class="w-4 h-4 icon-theme">
@@ -180,7 +208,7 @@
 
               <!-- Input Row 1: Primary Key -->
               <div class="flex flex-col space-y-1.5">
-                <span class="text-[10px] text-gray-400 font-medium">Primary API Key</span>
+                <span class="text-sm text-gray-400 font-medium">Primary API Key <span class="text-gray-500 font-normal text-xs ml-1">(Required)</span></span>
                 <div class="flex items-center space-x-3">
                   <div class="flex-grow flex items-center custom-input rounded-lg px-3 py-2 space-x-2 min-w-0">
                     <input type="password" id="api-key-input" placeholder="Enter your primary Groq API Key..." class="w-full bg-transparent text-xs text-white outline-none placeholder-gray-600 truncate">
@@ -195,8 +223,8 @@
               </div>
 
               <!-- Input Row 2: Backup Key 1 -->
-              <div class="flex flex-col space-y-1.5">
-                <span class="text-[10px] text-gray-400 font-medium">Backup API Key 1</span>
+              <div class="flex flex-col space-y-1.5" style="margin-top: 50px;">
+                <span class="text-sm text-gray-400 font-medium">Backup API Key 1 <span class="text-gray-500 font-normal text-xs ml-1">(Optional)</span></span>
                 <div class="flex items-center space-x-3">
                   <div class="flex-grow flex items-center custom-input rounded-lg px-3 py-2 space-x-2 min-w-0">
                     <input type="password" id="api-key-input-backup1" placeholder="Enter your first backup Groq API Key..." class="w-full bg-transparent text-xs text-white outline-none placeholder-gray-600 truncate">
@@ -212,7 +240,7 @@
 
               <!-- Input Row 3: Backup Key 2 -->
               <div class="flex flex-col space-y-1.5">
-                <span class="text-[10px] text-gray-400 font-medium">Backup API Key 2</span>
+                <span class="text-sm text-gray-400 font-medium">Backup API Key 2 <span class="text-gray-500 font-normal text-xs ml-1">(Optional)</span></span>
                 <div class="flex items-center space-x-3">
                   <div class="flex-grow flex items-center custom-input rounded-lg px-3 py-2 space-x-2 min-w-0">
                     <input type="password" id="api-key-input-backup2" placeholder="Enter your second backup Groq API Key..." class="w-full bg-transparent text-xs text-white outline-none placeholder-gray-600 truncate">
@@ -227,94 +255,172 @@
               </div>
             </div>
 
-          </div>
-        </section>
-      </main>
+            <!-- PANEL 4: AI MODELS (Hidden by default) -->
+            <div id="panel-models" class="absolute inset-0 hidden flex flex-col overflow-hidden pr-2">
+              <div class="flex flex-col space-y-1.5 flex-shrink-0">
+                <span class="text-sm text-gray-400 font-medium">Select Active AI Model</span>
+                <div class="relative w-full">
+                  <!-- Custom styled dropdown trigger -->
+                  <div id="custom-model-dropdown" class="flex items-center justify-between custom-input rounded-lg px-3 py-2 cursor-pointer select-none">
+                    <span id="custom-model-value" class="text-xs text-gray-400 font-normal truncate">Select Model</span>
+                    <img src="https://img.icons8.com/ios-filled/100/expand-arrow--v1.png" alt="arrow" class="w-3 h-3 icon-theme opacity-60 transition-transform duration-200" id="custom-model-arrow">
+                  </div>
+                  
+                   <!-- Custom styled dropdown list (renders strictly below the trigger) -->
+                  <div id="custom-model-options" class="absolute left-0 right-0 top-full mt-1.5 border border-theme-border rounded-lg shadow-2xl z-50 hidden flex-col overflow-hidden" style="background-color: #131313;">
+                    <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</div>
+                    <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="llama-3.1-8b-instant">llama-3.1-8b-instant</div>
+                    <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="openai/gpt-oss-120b">openai/gpt-oss-120b</div>
+                    <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="openai/gpt-oss-20b">openai/gpt-oss-20b</div>
+                  </div>
+                </div>
+              </div>
 
-      <!-- Keys Safety Information Modal -->
-      <div id="keys-info-modal" class="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4 no-drag rounded-2xl">
-        <div class="manager-card rounded-2xl max-w-sm w-full p-6 space-y-4 flex flex-col">
-          <div class="flex items-center space-x-2 pb-1 border-b border-theme-border">
-            <img src="https://img.icons8.com/ios-glyphs/90/information.png" alt="info" class="w-4 h-4 icon-theme opacity-80">
-            <span class="text-sm font-semibold tracking-wide">API Keys Setup & Security</span>
-          </div>
-          <div class="text-sm text-gray-200 leading-relaxed text-left font-normal">
-            <ul class="space-y-2.5 list-disc pl-4">
-              <li><strong>Primary Key:</strong> The main key used for transcriptions, audio analysis, and copilot answers.</li>
-              <li><strong>Backup Keys:</strong> Two backup keys that automatically rotate in if your Primary Key hits rate limits or fails.</li>
-              <li><strong>Local Storage:</strong> Credentials are stored privately on your local machine and never sent to external servers.</li>
-              <li><strong>Direct connection:</strong> Connects directly to Groq's official endpoint, ensuring transcript privacy.</li>
-            </ul>
-          </div>
-          <button id="keys-modal-ok-btn" class="w-full py-2 bg-theme-btn border border-theme-border hover:bg-gray-800 rounded-lg text-xs text-white font-semibold tracking-wide transition-all active:scale-98">
-            I Understand
-          </button>
-        </div>
-      </div>
+              <!-- Descriptive Information Bullets (Scrollable Container) -->
+              <div class="flex-grow overflow-y-auto custom-scroll pr-1 mt-4">
+                <span class="text-sm font-semibold text-gray-300">Model Selection Guide</span>
+                <p class="text-sm text-gray-400 font-normal mt-1 mb-2">These models are based on the available best Groq production models. <a href="#" id="view-models-link" class="text-blue-400 hover:underline ml-1">view models<img src="https://img.icons8.com/external-jumpicon-line-ayub-irawan/64/external-arrow-arrows-jumpicon-line-jumpicon-line-ayub-irawan-39.png" alt="arrow" class="w-3.5 h-3.5 ml-0.5 inline-block align-middle" style="filter: invert(58%) sepia(84%) saturate(849%) hue-rotate(189deg) brightness(101%) contrast(97%);"></a></p>
+                <ul class="list-disc pl-4 space-y-3.5 text-sm text-gray-400 mt-2 font-normal">
+                  <li>
+                    <strong>llama-3.3-70b-versatile:</strong> Best for complex coding interviews and advanced reasoning tasks, offering high accuracy with a 131k context window and a 32k max output limit during live sessions.
+                    <div class="pl-4 mt-1 text-sm text-gray-400 font-normal">
+                      <span class="text-green-400 font-semibold">Pros:</span> Highly accurate, strong coding correctness and multilingual capabilities.<br>
+                      <span class="text-red-400 font-semibold">Cons:</span> High latency, slower generation speed for quick answers (approx. 0.5-0.8s response time).
+                    </div>
+                  </li>
+                  <li>
+                    <strong>llama-3.1-8b-instant:</strong> Ideal for fast, real-time meeting transcripts and conversational assistance, offering low-latency feedback with a 131k context window and a 131k max output limit during live sessions.
+                    <div class="pl-4 mt-1 text-sm text-gray-400 font-normal">
+                      <span class="text-green-400 font-semibold">Pros:</span> Near-instant responses (approx. 0.2-0.5s response time), cost-efficient, native function calling support.<br>
+                      <span class="text-red-400 font-semibold">Cons:</span> May struggle with deep math logic or complex software architecture.
+                    </div>
+                  </li>
+                  <li>
+                    <strong>openai/gpt-oss-120b:</strong> Flagship reasoning model for complex software engineering interviews and deep math logic, offering agentic power with a 131k context window and a 65k max output limit during live sessions.
+                    <div class="pl-4 mt-1 text-sm text-gray-400 font-normal">
+                      <span class="text-green-400 font-semibold">Pros:</span> Excellent advanced reasoning, MoE architecture, matches proprietary engines.<br>
+                      <span class="text-red-400 font-semibold">Cons:</span> High computational overhead, slowest response speed (approx. 0.7-1.0s response time).
+                    </div>
+                  </li>
+                  <li>
+                    <strong>openai/gpt-oss-20b:</strong> Highly cost-efficient assistant for quick summaries and routine tool calling tasks, offering lightweight MoE performance with a 131k context window and a 65k max output limit during live sessions.
+                    <div class="pl-4 mt-1 text-sm text-gray-400 font-normal">
+                      <span class="text-green-400 font-semibold">Pros:</span> Small memory footprint, fast tool execution (approx. 0.3-0.7s response time), highly economical.<br>
+                      <span class="text-red-400 font-semibold">Cons:</span> Limited capabilities on highly complex code reasoning tasks.
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
 
-      <!-- Analytics Information Modal -->
-      <div id="analytics-info-modal" class="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4 no-drag rounded-2xl">
-        <div class="manager-card rounded-2xl max-w-sm w-full p-6 space-y-4 flex flex-col">
-          <div class="flex items-center space-x-2 pb-1 border-b border-theme-border">
-            <img src="https://img.icons8.com/ios-glyphs/90/information.png" alt="info" class="w-4 h-4 icon-theme opacity-80">
-            <span class="text-sm font-semibold tracking-wide">API Usage & Metrics</span>
-          </div>
-          <div class="text-sm text-gray-200 leading-relaxed text-left font-normal">
-            <ul class="space-y-2.5 list-disc pl-4">
-              <li><strong>Sparkline Graphs:</strong> Real-time request volume trends over the last 7 days. Hover to view daily query counts.</li>
-              <li><strong>Free Tier Limits:</strong> Groq has a rate limit depending on your developer plan (e.g. 14,400 RPD).</li>
-              <li><strong>Key Status Badges:</strong> Displays whether each key is active, rate-limited, or unused.</li>
-            </ul>
-          </div>
-          <button id="analytics-modal-ok-btn" class="w-full py-2 bg-theme-btn border border-theme-border hover:bg-gray-800 rounded-lg text-xs text-white font-semibold tracking-wide transition-all active:scale-98">
-            I Understand
-          </button>
-        </div>
-      </div>
+            <!-- PANEL 5: GENERAL DOCUMENTATION (Hidden by default) -->
+            <div id="panel-info" class="absolute inset-0 hidden flex flex-col space-y-4 overflow-y-auto custom-scroll pr-2 pt-1">
+              <div class="flex flex-col space-y-3 pb-2">
+                <span class="text-sm font-semibold text-gray-200">Documentation & User Guide</span>
+                <p class="text-sm text-gray-400 font-normal">Welcome to Co-Assist AI documentation. Below is a detailed description of all features and tab operations.</p>
+                
+                <!-- Category: API Analytics -->
+                <div class="space-y-1">
+                  <span class="text-sm font-semibold text-gray-300 uppercase tracking-wider">API Analytics</span>
+                  <ul class="list-disc pl-4 space-y-1 text-sm text-gray-400 font-normal">
+                    <li><strong>Usage Tracking:</strong> Tracks and plots request volume trends and query counts processed over the last 7 days.</li>
+                    <li><strong>Key Status Monitoring:</strong> Displays and monitors the real-time health status of each key (Healthy, Rate Limited, Invalid, or Unused) to track active rotation failover.</li>
+                    <li><strong>Active Failover Indicator:</strong> Visually reflects backup key activation on your status cards in real time if the active session triggers the proactive failover rotation.</li>
+                  </ul>
+                </div>
 
-      <!-- Files Information Modal -->
-      <div id="files-info-modal" class="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4 no-drag rounded-2xl">
-        <div class="manager-card rounded-2xl max-w-sm w-full p-6 space-y-4 flex flex-col">
-          <div class="flex items-center space-x-2 pb-1 border-b border-theme-border">
-            <img src="https://img.icons8.com/ios-glyphs/90/information.png" alt="info" class="w-4 h-4 icon-theme opacity-80">
-            <span class="text-sm font-semibold tracking-wide">My Files & Context Info</span>
-          </div>
-          <div class="text-sm text-gray-200 leading-relaxed text-left font-normal">
-            <ul class="space-y-2.5 list-disc pl-4">
-              <li><strong>Resume:</strong> A text file (.txt format) detailing your background and experience. Useful for interview matching.</li>
-              <li><strong>Context:</strong> Support files detailing your coding style, specific project architectures, and codebase rules.</li>
-              <li><strong>AI Rules:</strong> Direct guidelines governing how the AI behaves and formats its code responses.</li>
-              <li><strong>Local Security:</strong> All resumes and context files are stored securely inside your local JSON database.</li>
-            </ul>
-          </div>
-          <button id="files-modal-ok-btn" class="w-full py-2 bg-theme-btn border border-theme-border hover:bg-gray-800 rounded-lg text-xs text-white font-semibold tracking-wide transition-all active:scale-98">
-            I Understand
-          </button>
-        </div>
-      </div>
+                <!-- Category: Recent Sessions -->
+                <div class="space-y-1 mt-2">
+                  <span class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Recent Sessions</span>
+                  <ul class="list-disc pl-4 space-y-1 text-sm text-gray-400 font-normal">
+                    <li><strong>Session History Tracking:</strong> Displays your history of past sessions, indicating the date, duration, and AI-generated summary of each recorded session.</li>
+                    <li><strong>Permanent Removal:</strong> Click the red trash icon next to a session to delete its log permanently from your local registry database.</li>
+                  </ul>
+                </div>
+                
+                <!-- Category: My Files -->
+                <div class="space-y-1 mt-2">
+                  <span class="text-sm font-semibold text-gray-300 uppercase tracking-wider">My Files & Resume Context</span>
+                  <ul class="list-disc pl-4 space-y-1 text-sm text-gray-400 font-normal">
+                    <li><strong>TXT Format Requirement:</strong> The system strictly accepts `.txt` file formats because the AI can easily parse raw text file contents.</li>
+                    <li><strong>Resume Information Reader:</strong> Uploading your resume allows the AI to fully read your professional details and structure answers to represent you.</li>
+                    <li><strong>Additional Context Upload:</strong> Upload support context files detailing further work experiences or personal characteristics so the AI knows who you are and represents you accurately.</li>
+                  </ul>
+                </div>
+                
+                <!-- Category: API Keys -->
+                <div class="space-y-1 mt-2">
+                  <span class="text-sm font-semibold text-gray-300 uppercase tracking-wider">API Keys Management</span>
+                  <ul class="list-disc pl-4 space-y-1 text-sm text-gray-400 font-normal">
+                    <li><strong>Groq API Execution:</strong> Connects directly to Groq Cloud services using your active API credentials to power transcription and chat replies.</li>
+                    <li><strong>Local Storage Security:</strong> All API Keys are saved directly to your local application database file. Your keys are never uploaded to any remote server or cloud.</li>
+                    <li><strong>Optional Backup Keys:</strong> Configuring Backup Key 1 and/or 2 is optional. For optimal reliability, backup keys should belong to different Groq accounts to bypass restrictions on multiple keys under one account.</li>
+                    <li><strong>Proactive Failover Rotation:</strong> The app predicts connection issues (like HTTP 429 rate limit blockages) before generating replies, displaying warnings, and rotating credentials dynamically to prevent session disruption.</li>
+                  </ul>
+                </div>
 
-      <!-- Recent Sessions Information Modal -->
-      <div id="recent-info-modal" class="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50 p-4 no-drag rounded-2xl">
-        <div class="manager-card rounded-2xl max-w-sm w-full p-6 space-y-4 flex flex-col">
-          <div class="flex items-center space-x-2 pb-1 border-b border-theme-border">
-            <img src="https://img.icons8.com/ios-glyphs/90/information.png" alt="info" class="w-4 h-4 icon-theme opacity-80">
-            <span class="text-sm font-semibold tracking-wide">Recent Sessions Info</span>
-          </div>
-          <div class="text-sm text-gray-200 leading-relaxed text-left font-normal">
-            <ul class="space-y-2.5 list-disc pl-4">
-              <li><strong>Sessions List:</strong> Shows history of saved meeting or interview sessions, including date and duration.</li>
-              <li><strong>Delete Sessions:</strong> Click the delete trash icon next to a session to permanently remove it from your database.</li>
-              <li><strong>Titling:</strong> Sessions are titled automatically based on the conversation topic or context summary.</li>
-            </ul>
-          </div>
-          <button id="recent-modal-ok-btn" class="w-full py-2 bg-theme-btn border border-theme-border hover:bg-gray-800 rounded-lg text-xs text-white font-semibold tracking-wide transition-all active:scale-98">
-            I Understand
-          </button>
-        </div>
-      </div>
+                <!-- Category: AI Models -->
+                <div class="space-y-1 mt-2">
+                  <span class="text-sm font-semibold text-gray-300 uppercase tracking-wider">AI Models Integration</span>
+                  <ul class="list-disc pl-4 space-y-1 text-sm text-gray-400 font-normal">
+                    <li><strong>Pre-Session Options:</strong> Choose which AI model you want to proceed with before starting a chat session, offering complete options control.</li>
+                    <li><strong>Groq Production Catalog:</strong> The catalog and backend API executions are based directly on Groq's official production model listings and documentation.</li>
+                    <li><strong>Model Capabilities & Power:</strong> Gives you direct control over processing power, ranging from lightweight models to flagship reasoning engines (like openai/gpt-oss-120b and llama-3.3-70b-versatile) for complex logic tasks.</li>
+                  </ul>
+                </div>
+
+                <!-- Category: Local Data & Security -->
+                <div class="space-y-1 mt-2">
+                  <span class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Local Data & Security</span>
+                  <ul class="list-disc pl-4 space-y-1 text-sm text-gray-400 font-normal">
+                    <li><strong>100% Local Filesystem:</strong> Because this project is fully open source, you have absolute control over your keys. Your API credentials, file uploads, and session details are stored locally inside <code class="bg-[#1e1e1e] px-1 py-0.5 rounded text-gray-300">database.json</code>. Your data is never shared with developers or third-party servers.</li>
+                    <li><strong>Access Data Directory:</strong> Copy and run any of these commands in your terminal to print the database JSON contents directly:
+                      <div class="mt-2 space-y-2.5">
+                        <div class="space-y-1">
+                          <span class="text-xs font-semibold text-gray-400">PowerShell command</span>
+                          <div class="flex items-center space-x-2 bg-[#1e1e1e] border border-theme-border rounded px-2.5 py-1.5 max-w-full">
+                            <code class="text-xs text-gray-300 font-mono select-all flex-grow truncate">Get-Content "$env:APPDATA\co-assist-ai\database.json"</code>
+                            <button class="copy-db-cmd-btn p-1 hover:opacity-85 transition-opacity" data-cmd='Get-Content "$env:APPDATA\co-assist-ai\database.json"' title="Copy Command">
+                              <img src="https://img.icons8.com/material-rounded/96/copy.png" alt="copy" class="w-3.5 h-3.5 icon-theme">
+                            </button>
+                          </div>
+                        </div>
+
+                        <div class="space-y-1">
+                          <span class="text-xs font-semibold text-gray-400">Command Prompt (CMD) command</span>
+                          <div class="flex items-center space-x-2 bg-[#1e1e1e] border border-theme-border rounded px-2.5 py-1.5 max-w-full">
+                            <code class="text-xs text-gray-300 font-mono select-all flex-grow truncate">type "%APPDATA%\co-assist-ai\database.json"</code>
+                            <button class="copy-db-cmd-btn p-1 hover:opacity-85 transition-opacity" data-cmd='type "%APPDATA%\co-assist-ai\database.json"' title="Copy Command">
+                              <img src="https://img.icons8.com/material-rounded/96/copy.png" alt="copy" class="w-3.5 h-3.5 icon-theme">
+                            </button>
+                          </div>
+                        </div>
+
+                        <div class="space-y-1">
+                          <span class="text-xs font-semibold text-gray-400">macOS/Linux Terminal command</span>
+                          <div class="flex items-center space-x-2 bg-[#1e1e1e] border border-theme-border rounded px-2.5 py-1.5 max-w-full">
+                            <code class="text-xs text-gray-300 font-mono select-all flex-grow truncate">cat ~/Library/Application\ Support/co-assist-ai/database.json</code>
+                            <button class="copy-db-cmd-btn p-1 hover:opacity-85 transition-opacity" data-cmd="cat ~/Library/Application\ Support/co-assist-ai/database.json" title="Copy Command">
+                              <img src="https://img.icons8.com/material-rounded/96/copy.png" alt="copy" class="w-3.5 h-3.5 icon-theme">
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+
 
     </div>
-    
+  </div>
+
+  <!-- Shared Custom Analytics Tooltip Popup -->
+  <div id="analytics-tooltip" class="absolute pointer-events-none text-white text-xs px-2.5 py-1.5 rounded shadow-2xl z-50 hidden flex-col space-y-0.5 border border-theme-border" style="background-color: rgba(19, 19, 19, 0.85); backdrop-filter: blur(4px); border-radius: 6px;">
+    <span id="tooltip-date" class="text-gray-400 font-semibold text-xs">Jan 1</span>
+    <span id="tooltip-queries" class="font-bold text-white text-xs">0 queries</span>
   </div>
 
   <script src="sessions.js"></script>

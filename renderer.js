@@ -19,19 +19,34 @@ const resizeHandle = document.getElementById('resize-handle');
 
 let GEMINI_API_KEYS = [];
 let activeKeyIndex = 0;
-const MODEL_NAME = 'meta-llama/llama-4-scout-17b-16e-instruct';
+let MODEL_NAME = 'llama-3.3-70b-versatile';
+let activeAbortController = null;
 
 // System prompt text holder
 let systemInstructionText = "";
 let sessionHistory = [];
+let apiMessages = [];
 
-function rotateApiKey() {
+function getFriendlyModelName(modelVal) {
+  return modelVal || 'llama-3.3-70b-versatile';
+}
+
+function getActiveKeyLabel() {
+  const currentType = GEMINI_API_KEYS[activeKeyIndex] ? GEMINI_API_KEYS[activeKeyIndex].type : 'primary';
+  const keyLabel = currentType === 'primary' ? 'Primary' : currentType === 'backup1' ? 'Backup 1' : 'Backup 2';
+  return `<span style="color: #9CA3AF !important; font-weight: 500;">AI Respond (${keyLabel})</span> <span style="color: #FFFFFF !important; font-weight: 500;">${getFriendlyModelName(MODEL_NAME)}</span>`;
+}
+
+function rotateApiKey(labelDiv = null) {
   if (activeKeyIndex < GEMINI_API_KEYS.length - 1) {
     activeKeyIndex++;
     const nextType = GEMINI_API_KEYS[activeKeyIndex].type;
     const label = nextType === 'primary' ? 'Primary Key' : nextType === 'backup1' ? 'Backup Key 1' : 'Backup Key 2';
     console.warn(`API key failover triggered. Switching to: ${label}`);
     updateStatus(`Switching to ${label}...`, 'thinking');
+    if (labelDiv) {
+      labelDiv.innerHTML = getActiveKeyLabel();
+    }
     return true;
   }
   return false;
@@ -40,13 +55,19 @@ function rotateApiKey() {
 async function loadSystemInstructions() {
   try {
     const db = await ipcRenderer.invoke('get-db-data');
-    if (db) {
-      // Load all saved API keys
+    if (db && db.settings) {
+      // Refresh local keys list
       GEMINI_API_KEYS = [];
       if (db.settings.apiKey) GEMINI_API_KEYS.push({ type: 'primary', key: db.settings.apiKey });
       if (db.settings.apiKeyBackup1) GEMINI_API_KEYS.push({ type: 'backup1', key: db.settings.apiKeyBackup1 });
       if (db.settings.apiKeyBackup2) GEMINI_API_KEYS.push({ type: 'backup2', key: db.settings.apiKeyBackup2 });
-      activeKeyIndex = 0;
+
+      // Load Dynamic Model Name
+      if (db.settings.selectedModel) {
+        MODEL_NAME = db.settings.selectedModel;
+      } else {
+        MODEL_NAME = 'llama-3.3-70b-versatile';
+      }
 
       // Load Resume
       let resumeText = "";
@@ -62,24 +83,45 @@ async function loadSystemInstructions() {
         });
       }
 
-      // Load Rules
-      let rulesText = "";
-      if (db.settings.rules && db.settings.rules.length > 0) {
-        db.settings.rules.forEach(r => {
-          rulesText += `\n\n=== Rule: ${r.fileName} ===\n${r.content}`;
-        });
-      }
-
       systemInstructionText = `# SYSTEM PROTOCOL (YOUR PERSONA AND BEHAVIORS)
+
+## CRITICAL INSTRUCTIONS (MUST OBEY AT ALL TIMES):
+1. **IDENTITY & SECRECY**: You ARE the user representing a real software engineer in an interview. Speak strictly in the first person ("I", "my", "our"). Never refer to yourself as an AI, chatbot, assistant, or large language model. Never mention GoCheet, Gemini, OpenAI, or any AI services. If asked about using AI or cheating, stay completely silent.
+2. **BREVITY & FOCUS**: Keep all responses extremely short, direct, and conversational (3-5 sentences maximum). Answer only what is asked, without unnecessary pleasantries or conversational padding. Do NOT use bullet points unless specifically requested or listing sequential algorithm steps. Do NOT output raw ASCII art, pipe dividers (\`|\`), equals line dividers (\`=\`), plus signs (\`+\`), or dashes (\`-\`) as text dividers or table borders.
+3. **TONE**: Speak politely and naturally, keeping a casual yet professional tone. Use everyday language and casual transition phrases (e.g. "So basically...", "What I did was...", "At my last job..."). Avoid formal, textbook-like jargon.
+4. **LIST LIMIT**: When listing points or steps, limit lists strictly to **2 to 3 key strategic points maximum** for readability. Ensure each point is concise and makes clear impact.
+5. **READABILITY & BOLDING**: Use bolding (\\*\`**text**\`\\*) very sparsely. ONLY bold key technical terms (e.g. algorithm names, time/space complexities). Never bold random verbs, adjectives, or entire sentences. Put spacing between paragraphs.
+6. **BIG O PRONUNCIATION (MANDATORY)**: Whenever you output any Time or Space Complexity notation (e.g. O(1), O(n), O(log n), O(n log n), O(n^2), O(2^n)), you MUST always format it with a dash and its pronunciation & representation in parenthesis immediately after it.
+   - Time Complexity Examples:
+     * O(1) - (pronounced as "Big O of 1", representing Constant Time Complexity)
+     * O(n) - (pronounced as "Big O of n", representing Linear Time Complexity)
+     * O(log n) - (pronounced as "Big O of log n", representing Logarithmic Time Complexity)
+     * O(n log n) - (pronounced as "Big O of n log n", representing Linearithmic Time Complexity)
+     * O(n^2) - (pronounced as "Big O of n squared", representing Quadratic Time Complexity)
+     * O(2^n) - (pronounced as "Big O of 2 to the n", representing Exponential Time Complexity)
+   - Space Complexity Examples:
+     * O(1) - (pronounced as "Big O of 1", representing Constant Space Complexity)
+     * O(n) - (pronounced as "Big O of n", representing Linear Space Complexity)
+7. **CONCEPTUAL & TECHNICAL QUESTIONS**: If the question is conceptual/architectural (e.g. "explain CSR vs SSR", "what is HTTP GET vs POST", "explain REST"), answer strictly with text in under 4 sentences. Do NOT write a code block. At the end of your explanation, output exactly one short, natural clarifying follow-up question to ask the interviewer (e.g., "For our setup, are we prioritizing initial page load speed or user interaction?").
+8. **COLLABORATIVE LIVE CODING FLOW**:
+   * Writing perfect code instantly is highly suspicious.
+   * When a coding problem is first introduced (e.g. "reverse a linked list", "implement two sum"), DO NOT write the code block yet.
+   * Instead, your first response must propose **1 or 2 clarifying questions** to ask the interviewer (e.g. asking about constraints like duplicates, sorting, negative values) and provide a quick **Brute Force vs. Optimal** complexity comparison (using the plain-English notation and pronunciation rules).
+   * Only write and output the code block format (intro line, code block, output, ending explanation) if the interviewer has answered your questions or if the user's question explicitly asks to write/implement the code directly (e.g. "code me...", "write the function...", "implement...").
+9. **CODE BLOCK FORMAT (WHEN CODING IS REQUESTED)**:
+   * **Line 1 (Short Start Description)**: Start with exactly one short sentence introducing the solution code (e.g., "Here is the Python implementation using a Hash Map:").
+   * **Line 2 (Code Block Container)**: Output the code block. The code block must contain sparse, helpful comments explaining key logic. The code block MUST ONLY contain the solution code itself—do NOT write driver code, print calls, function example execution calls, or outputs inside the code block container.
+   * **Line 3 (Code Output)**: Immediately below the code block (outside the code block container), output the sample execution result/output as plain text (e.g., Output: [result]).
+   * **Line 4 (Trace Table & Short Explanation Ending)**: Output a step-by-step **Dry-Run Trace Table** tracking variables for a sample input, followed by a brief 1-2 sentence ending explanation of the approach and complexities (using the plain-English Big O rules).
+10. **BUG DEBUGGER MODE**: If the user sends an error trace or bug description (e.g. "IndexError", "failing test case"), enter Debugger Mode: do NOT rewrite the entire function. Instead, explain the bug in 1 sentence and output a simple **1-line code diff fix**, followed by a brief explanation.
+11. **NO REDUNDANT CODE**: Do not write redundant helper classes (like node classes for linked lists/trees) unless asked. Only write the main solution function.
+12. **LANGUAGE MATCHING**: Match the programming language on the user's screen or requested by the interviewer. If not specified, default to Python.
 
 ## IDENTITY (YOU ARE THIS PERSON):
 ${resumeText}
 
 ## ADDITIONAL DEV CONTEXT (FACTS ABOUT YOUR WORK/STYLE):
 ${contextText}
-
-## GUIDELINES, BEHAVIORS, AND POLICIES (OBEY THESE AT ALL TIMES):
-${rulesText}
 `;
     }
   } catch (err) {
@@ -89,6 +131,126 @@ ${rulesText}
 
 // Load rules and persona context on app launch
 loadSystemInstructions();
+
+function formatMarkdown(text) {
+  if (!text) return "";
+  
+  // Split by ``` to find code blocks (even indices are markdown text, odd indices are code blocks)
+  const parts = text.split("```");
+  let html = "";
+  
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) {
+      let textPart = parts[i];
+      // Consolidate three or more consecutive newlines to exactly two newlines
+      textPart = textPart.replace(/\n{3,}/g, '\n\n');
+      
+      // Escape HTML entities to prevent XSS
+      let escapedText = textPart
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+        
+      // Parse inline elements (code, bold, headings, lists)
+      escapedText = escapedText
+        .replace(/`([^`]+)`/g, '<strong class="font-semibold text-white">$1</strong>')
+        .replace(/\*\*([^\*]+)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
+        .replace(/^### (.*$)/gim, '<h3 class="text-xs font-semibold text-white mt-3 mb-1">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2 class="text-sm font-bold text-white mt-4 mb-2">$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1 class="text-base font-black text-white mt-5 mb-2">$1</h1>')
+        .replace(/^\s*[-*]\s+(.*$)/gim, '<li class="ml-4 list-disc text-xs text-gray-300">$1</li>')
+        .replace(/^\s*(\d+)\.\s+(.*$)/gim, '<div class="ml-4 text-sm text-gray-300 my-1" style="margin: 6px 0 !important; font-size: 14px !important;"><strong class="text-white">$1.</strong> $2</div>');
+        
+      // Natural spacing: treat double newlines as paragraph breaks, single newlines as spaces,
+      // and remove trailing newlines after block elements to prevent double-spacing
+      escapedText = escapedText.replace(/(<\/h\d>|<\/li>|<\/div>)\s*\n/gi, '$1');
+      escapedText = escapedText.replace(/\n{2,}/g, '<br><br>');
+      escapedText = escapedText.replace(/\n/g, ' ');
+        
+      html += escapedText;
+    } else {
+      // Code block
+      let codePart = parts[i];
+      
+      // Parse language tag on first line
+      let lang = "python";
+      let code = codePart;
+      
+      const firstNewline = codePart.indexOf("\n");
+      if (firstNewline !== -1) {
+        const potentialLang = codePart.substring(0, firstNewline).trim();
+        if (potentialLang.length > 0 && potentialLang.length < 15) {
+          lang = potentialLang.toLowerCase();
+          code = codePart.substring(firstNewline + 1);
+        }
+      }
+      
+      // PROGRAMMATIC SPLIT FALLBACK:
+      // If the code block contains comments like "# Example usage:" or "// Example usage:",
+      // extract them and render them outside of the code block as plain text.
+      let cleanCode = code.trim();
+      let exampleText = "";
+      
+      const splitPatterns = [
+        "# Example usage:",
+        "// Example usage:",
+        "/* Example usage",
+        "# Example Usage:",
+        "// Example Usage:",
+        "# Example:",
+        "// Example:",
+        "# Output:",
+        "// Output:"
+      ];
+      
+      let splitIndex = -1;
+      for (const pattern of splitPatterns) {
+        const idx = cleanCode.indexOf(pattern);
+        if (idx !== -1 && (splitIndex === -1 || idx < splitIndex)) {
+          splitIndex = idx;
+        }
+      }
+      
+      if (splitIndex !== -1) {
+        exampleText = cleanCode.substring(splitIndex);
+        cleanCode = cleanCode.substring(0, splitIndex).trim();
+      }
+
+      const uniqueId = 'code-' + Math.random().toString(36).substr(2, 9);
+      let highlightedCode = cleanCode;
+      const grammar = Prism.languages[lang] || Prism.languages.python || Prism.languages.clike;
+      try {
+        highlightedCode = Prism.highlight(cleanCode, grammar, lang);
+      } catch (e) {
+        highlightedCode = cleanCode
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+      
+      html += `<div class="code-block-container my-3 rounded-lg overflow-hidden bg-gray-900 border border-theme-border/30 font-mono text-xs text-gray-200">
+        <div class="code-block-header flex items-center justify-between px-3 py-1.5 bg-gray-800 border-b border-theme-border/20 text-[10px] text-gray-400 select-none">
+          <span>${lang}</span>
+          <button class="copy-code-btn" onclick="navigator.clipboard.writeText(document.getElementById('${uniqueId}').innerText); this.innerText='Copied!'; setTimeout(() => this.innerText='Copy', 2000)">Copy</button>
+        </div>
+        <pre class="p-3 overflow-x-auto"><code id="${uniqueId}" class="language-${lang}">${highlightedCode}</code></pre>
+      </div>`;
+
+      // If we extracted an example block, render it here as natural plain text below the code block container
+      if (exampleText) {
+        // Strip out code comment signs (#, //, /*, */) so it displays as clean plain text
+        const cleanExample = exampleText
+          .replace(/(#\s*Example usage:|#\s*Example Usage:|#\s*Example:|#\s*Output:|#\s*Output:|#|\/\/|\/\*|\*\/)/gi, "")
+          .trim();
+        if (cleanExample) {
+          html += `<div class="text-sm text-gray-300 my-2.5 font-mono" style="margin: 10px 0 !important; font-size: 14px !important; line-height: 1.5;"><strong class="text-white">Example Output:</strong><br>${cleanExample.replace(/\n/g, '<br>')}</div>`;
+        }
+      }
+    }
+  }
+  
+  return html;
+}
 
 // App configuration
 const VOLUME_THRESHOLD = 5;     // Sound level threshold (out of 255)
@@ -107,6 +269,7 @@ let sourceNode = null;
 let isRecording = false;
 let isMuted = false;             // Toggle to temporarily disable auto-listening
 let silenceTimer = null;
+let voiceSustainedTimer = null;  // For debouncing short notification sounds
 let isProcessingResponse = false; // Prevent recording new sounds while Gemini is responding
 let isExpanded = false;
 let chatPanelWidth = 680;
@@ -134,7 +297,7 @@ recordingCloseBtn.addEventListener('click', async () => {
   const currentKey = GEMINI_API_KEYS[activeKeyIndex] ? GEMINI_API_KEYS[activeKeyIndex].key : '';
   if (sessionHistory.length > 0 && currentKey) {
     try {
-      const historySnippet = sessionHistory.slice(-6).join("\n"); // use last 3 dialogue turns
+      const historySnippet = sessionHistory.slice(-60).join("\n"); // use last 30 dialogue turns to capture the overall context
       const url = `https://api.groq.com/openai/v1/chat/completions`;
       
       const response = await fetch(url, {
@@ -147,7 +310,7 @@ recordingCloseBtn.addEventListener('click', async () => {
           model: MODEL_NAME,
           messages: [{
             role: "user",
-            content: `Summarize the main topic discussed in this job interview conversation in a short sentence or title. The title MUST be under 10 words and under 60 characters. Do not use quotation marks, punctuation, or special characters. Conversation:\n\n${historySnippet}`
+            content: `Analyze this entire conversation and generate a consistent, professional title summarizing the overall topics discussed. The title MUST be a clean, descriptive sentence under 80 characters, without any quotation marks or punctuation. Do not focus on just the end topic, but capture the key highlights from start to finish. Conversation:\n\n${historySnippet}`
           }]
         })
       });
@@ -168,7 +331,7 @@ recordingCloseBtn.addEventListener('click', async () => {
     const firstUserMsg = sessionHistory.find(msg => msg.startsWith("User: "));
     if (firstUserMsg) {
       const question = firstUserMsg.replace(/^User:\s*/i, "").trim();
-      aiTitle = question.length > 60 ? question.substring(0, 57) + "..." : question;
+      aiTitle = question.length > 80 ? question.substring(0, 77) + "..." : question;
     }
   }
 
@@ -187,9 +350,11 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// Expand/Collapse Toggle Logic
 expandToggleBtn.addEventListener('click', () => {
   isExpanded = !isExpanded;
+  const winWidth = Math.max(chatPanelWidth + 40, 800);
+  const isMenuOpen = sessionMenuModal && !sessionMenuModal.classList.contains('hidden');
+
   if (isExpanded) {
     chatPanel.classList.remove('collapsed-panel');
     chevronIcon.style.transform = 'rotate(180deg)';
@@ -199,13 +364,25 @@ expandToggleBtn.addEventListener('click', () => {
     chatPanel.style.height = `${chatPanelHeight}px`;
     
     // Resize Electron window to fit expanded layout
-    ipcRenderer.send('resize-window', { width: chatPanelWidth + 40, height: chatPanelHeight + 120 });
+    ipcRenderer.send('resize-window', { width: winWidth, height: chatPanelHeight + 120 });
   } else {
     chatPanel.classList.add('collapsed-panel');
     chevronIcon.style.transform = 'rotate(0deg)';
-    // Resize Electron window back to collapsed control bar layout (keep width matching to prevent visual jump)
-    ipcRenderer.send('resize-window', { width: chatPanelWidth + 40, height: 68 });
+    
+    // Wait for the CSS transition (300ms) to finish before shrinking the Electron window height
+    setTimeout(() => {
+      if (!isExpanded) {
+        const currentIsMenuOpen = sessionMenuModal && !sessionMenuModal.classList.contains('hidden');
+        const winHeight = currentIsMenuOpen ? 120 : 68;
+        ipcRenderer.send('resize-window', { width: winWidth, height: winHeight });
+      }
+    }, 300);
   }
+
+  // Reposition the menu modal dynamically after layouts render
+  setTimeout(() => {
+    if (typeof positionMenuModal === 'function') positionMenuModal();
+  }, 50);
 });
 
 // Enable/Disable send button based on input
@@ -249,20 +426,30 @@ function appendMessage(text, sender, label = "") {
     groupDiv.classList.add('items-start');
   }
   
+  let labelDiv = null;
   if (label) {
-    const labelDiv = document.createElement('div');
+    labelDiv = document.createElement('div');
     labelDiv.classList.add('message-label', 'mb-1', 'select-none');
-    labelDiv.innerText = label;
+    if (label.includes('<span')) {
+      labelDiv.innerHTML = label;
+    } else {
+      labelDiv.innerText = label;
+    }
     groupDiv.appendChild(labelDiv);
   }
   
   const msgDiv = document.createElement('div');
   msgDiv.classList.add('message', sender);
-  msgDiv.innerText = text;
+  if (sender === 'ai') {
+    msgDiv.innerHTML = formatMarkdown(text);
+    msgDiv.dataset.rawText = text;
+  } else {
+    msgDiv.innerText = text;
+  }
   groupDiv.appendChild(msgDiv);
   
   messagesList.appendChild(groupDiv);
-  return { groupDiv, msgDiv };
+  return { groupDiv, msgDiv, labelDiv };
 }
 
 // Find position of the next complete JSON object in a stream buffer
@@ -333,10 +520,12 @@ async function streamResponse(response, replyBubble) {
               const textChunk = data.choices[0].delta.content;
               if (textChunk) {
                 if (!hasContent) {
-                  replyBubble.innerText = "";
+                  replyBubble.innerHTML = "";
+                  replyBubble.dataset.rawText = "";
                   hasContent = true;
                 }
-                replyBubble.innerText += textChunk;
+                replyBubble.dataset.rawText += textChunk;
+                replyBubble.innerHTML = formatMarkdown(replyBubble.dataset.rawText);
                 scrollToBottom();
               }
             }
@@ -426,8 +615,15 @@ function updateStatus(text, stateClass = '') {
 // Groq Text Query
 async function sendTextMessage(text) {
   removeListeningIndicator();
+  
+  // Abort any active query before starting a new one
+  if (activeAbortController) {
+    activeAbortController.abort();
+  }
+  activeAbortController = new AbortController();
+
   const { msgDiv: userBubble } = appendMessage(text, 'user', 'Me');
-  const { msgDiv: replyBubble } = appendMessage("Thinking...", 'ai', 'AI Respond');
+  const { msgDiv: replyBubble, labelDiv } = appendMessage("Thinking...", 'ai', getActiveKeyLabel());
   scrollToBottom();
   
   isProcessingResponse = true;
@@ -444,6 +640,7 @@ async function sendTextMessage(text) {
     }
 
     try {
+      await loadSystemInstructions();
       const url = `https://api.groq.com/openai/v1/chat/completions`;
       
       const response = await fetch(url, {
@@ -456,10 +653,12 @@ async function sendTextMessage(text) {
           model: MODEL_NAME,
           messages: [
             { role: 'system', content: systemInstructionText },
+            ...apiMessages,
             { role: 'user', content: text }
           ],
           stream: true
-        })
+        }),
+        signal: activeAbortController.signal
       });
       
       if (!response.ok) {
@@ -467,7 +666,7 @@ async function sendTextMessage(text) {
         const failStatus = response.status === 429 ? 'rate-limited' : 'invalid';
         ipcRenderer.send('set-key-status', { keyType: currentType, status: failStatus });
 
-        if ((response.status === 429 || response.status === 400) && rotateApiKey()) {
+        if ((response.status === 429 || response.status === 400) && rotateApiKey(labelDiv)) {
           continue; // Retry loop with next key
         }
         throw new Error(`HTTP ${response.status}: ${errText}`);
@@ -475,16 +674,24 @@ async function sendTextMessage(text) {
       
       await streamResponse(response, replyBubble);
       sessionHistory.push(`User: ${text}`);
-      sessionHistory.push(`AI: ${replyBubble.innerText}`);
+      sessionHistory.push(`AI: ${replyBubble.dataset.rawText || replyBubble.innerText}`);
+      apiMessages.push({ role: 'user', content: text });
+      apiMessages.push({ role: 'assistant', content: replyBubble.dataset.rawText || replyBubble.innerText });
       
       ipcRenderer.send('set-key-status', { keyType: currentType, status: 'healthy' });
       ipcRenderer.send('increment-api-usage', { keyType: currentType });
       success = true;
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log("Request aborted.");
+        if (replyBubble) replyBubble.innerText = "[Interrupted]";
+        break;
+      }
+
       const failStatus = error.message.includes("429") ? 'rate-limited' : 'invalid';
       ipcRenderer.send('set-key-status', { keyType: currentType, status: failStatus });
 
-      if (rotateApiKey()) {
+      if (rotateApiKey(labelDiv)) {
         continue; // Retry loop with next key
       }
       if (replyBubble) {
@@ -554,7 +761,21 @@ function initAudioAnalysis(stream) {
   dataArray = new Uint8Array(bufferLength);
   
   sourceNode = audioContext.createMediaStreamSource(stream);
-  sourceNode.connect(analyser);
+
+  // 1. Highpass filter to cut out low rumbling hums below 80Hz
+  const hpFilter = audioContext.createBiquadFilter();
+  hpFilter.type = 'highpass';
+  hpFilter.frequency.value = 80;
+
+  // 2. Lowpass filter to cut out high notification pings above 3000Hz
+  const lpFilter = audioContext.createBiquadFilter();
+  lpFilter.type = 'lowpass';
+  lpFilter.frequency.value = 3000;
+
+  // Connect stream -> HP filter -> LP filter -> Analyser
+  sourceNode.connect(hpFilter);
+  hpFilter.connect(lpFilter);
+  lpFilter.connect(analyser);
   
   monitorVolume();
 }
@@ -569,20 +790,55 @@ function monitorVolume() {
   analyser.getByteFrequencyData(dataArray);
   
   let sum = 0;
+  let maxVal = 0;
   for (let i = 0; i < dataArray.length; i++) {
     sum += dataArray[i];
+    if (dataArray[i] > maxVal) {
+      maxVal = dataArray[i];
+    }
   }
   const averageVolume = sum / dataArray.length;
   
+  // Calculate spectral concentration (pure tones like bells/chimes have high concentration)
+  const concentration = sum > 0 ? (maxVal / sum) : 0;
+  if (concentration > 0.22) {
+    // Pure tone detected (notification chime, bell, or bleep), cancel voice trigger
+    if (!isRecording && voiceSustainedTimer) {
+      clearTimeout(voiceSustainedTimer);
+      voiceSustainedTimer = null;
+      updateStatus("Listening for sound...", 'listening');
+    }
+    requestAnimationFrame(monitorVolume);
+    return;
+  }
+
   if (averageVolume > VOLUME_THRESHOLD) {
-    if (!isRecording) {
-      startRecording();
-    } else if (silenceTimer) {
+    // Clear silence timer if it was running
+    if (silenceTimer) {
       clearTimeout(silenceTimer);
       silenceTimer = null;
+    }
+
+    if (!isRecording) {
+      // Debounce transient sounds (must stay above threshold for 300ms to trigger)
+      if (!voiceSustainedTimer) {
+        voiceSustainedTimer = setTimeout(() => {
+          startRecording();
+          voiceSustainedTimer = null;
+        }, 300);
+      }
+      updateStatus("Sound detected...", 'listening');
+    } else {
       updateStatus("Recording sound...", 'listening');
     }
   } else {
+    // If volume fell below threshold, cancel any pending recording trigger
+    if (!isRecording && voiceSustainedTimer) {
+      clearTimeout(voiceSustainedTimer);
+      voiceSustainedTimer = null;
+      updateStatus("Listening for sound...", 'listening');
+    }
+
     if (isRecording && !silenceTimer) {
       updateStatus("Processing in 1.5s...", 'listening');
       silenceTimer = setTimeout(() => {
@@ -633,8 +889,15 @@ function stopRecording() {
 // Send Audio to Groq API (Whisper for STT, Llama for completions)
 async function processAudioAndQueryGemini(audioBlob) {
   removeListeningIndicator();
+  
+  // Abort any active query before starting a new one
+  if (activeAbortController) {
+    activeAbortController.abort();
+  }
+  activeAbortController = new AbortController();
+
   const { msgDiv: statusIndicator } = appendMessage("[Transcribing audio...]", 'user', 'Interviewer Question');
-  const { msgDiv: replyBubble } = appendMessage("Thinking...", 'ai', 'AI Respond');
+  const { msgDiv: replyBubble, labelDiv } = appendMessage("Thinking...", 'ai', getActiveKeyLabel());
   scrollToBottom();
   
   isProcessingResponse = true;
@@ -657,13 +920,15 @@ async function processAudioAndQueryGemini(audioBlob) {
       const formData = new FormData();
       formData.append('file', audioBlob, 'audio.webm');
       formData.append('model', 'whisper-large-v3-turbo');
+      formData.append('language', 'en'); // Force English output
 
       const transResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${currentKey}`
         },
-        body: formData
+        body: formData,
+        signal: activeAbortController.signal
       });
 
       if (!transResponse.ok) {
@@ -671,7 +936,7 @@ async function processAudioAndQueryGemini(audioBlob) {
         const failStatus = transResponse.status === 429 ? 'rate-limited' : 'invalid';
         ipcRenderer.send('set-key-status', { keyType: currentType, status: failStatus });
 
-        if ((transResponse.status === 429 || transResponse.status === 400) && rotateApiKey()) {
+        if ((transResponse.status === 429 || transResponse.status === 400) && rotateApiKey(labelDiv)) {
           continue; // Retry loop with next key
         }
         throw new Error(`Whisper Transcription HTTP ${transResponse.status}: ${errText}`);
@@ -682,8 +947,31 @@ async function processAudioAndQueryGemini(audioBlob) {
       
       if (!transcribedText) {
         // No speech detected
-        if (statusIndicator) statusIndicator.remove();
-        replyBubble.innerText = "[No speech detected]";
+        if (statusIndicator) statusIndicator.parentNode.remove();
+        if (replyBubble) replyBubble.parentNode.remove();
+        success = true;
+        break;
+      }
+
+      // WHISPER HALLUCINATION FILTER
+      const cleanTextLower = transcribedText.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").trim();
+      const hallucinations = [
+        "thank you",
+        "you",
+        "продолжение следует",
+        "thanks for watching",
+        "bye",
+        "go ahead",
+        "subtitle by"
+      ];
+
+      // Check for Cyrillic letters (e.g. Russian credit hallucinations)
+      const hasCyrillic = /[а-яА-Я]/g.test(transcribedText);
+
+      if (cleanTextLower.length < 4 || hallucinations.includes(cleanTextLower) || /^[0-9\s]*$/.test(cleanTextLower) || hasCyrillic) {
+        console.log(`Discarded Whisper Hallucination/Tone: "${transcribedText}"`);
+        if (statusIndicator) statusIndicator.parentNode.remove();
+        if (replyBubble) replyBubble.parentNode.remove();
         success = true;
         break;
       }
@@ -693,6 +981,7 @@ async function processAudioAndQueryGemini(audioBlob) {
 
       // 2. Query Llama 3.3 for the response
       updateStatus("Analyzing response...", 'thinking');
+      await loadSystemInstructions();
       const url = `https://api.groq.com/openai/v1/chat/completions`;
       
       const response = await fetch(url, {
@@ -705,10 +994,12 @@ async function processAudioAndQueryGemini(audioBlob) {
           model: MODEL_NAME,
           messages: [
             { role: 'system', content: systemInstructionText },
+            ...apiMessages,
             { role: 'user', content: transcribedText }
           ],
           stream: true
-        })
+        }),
+        signal: activeAbortController.signal
       });
 
       if (!response.ok) {
@@ -716,7 +1007,7 @@ async function processAudioAndQueryGemini(audioBlob) {
         const failStatus = response.status === 429 ? 'rate-limited' : 'invalid';
         ipcRenderer.send('set-key-status', { keyType: currentType, status: failStatus });
 
-        if ((response.status === 429 || response.status === 400) && rotateApiKey()) {
+        if ((response.status === 429 || response.status === 400) && rotateApiKey(labelDiv)) {
           continue; // Retry loop with next key
         }
         throw new Error(`Llama Completion HTTP ${response.status}: ${errText}`);
@@ -724,16 +1015,27 @@ async function processAudioAndQueryGemini(audioBlob) {
       
       await streamResponse(response, replyBubble);
       sessionHistory.push(`User: ${transcribedText}`);
-      sessionHistory.push(`AI: ${replyBubble.innerText}`);
+      sessionHistory.push(`AI: ${replyBubble.dataset.rawText || replyBubble.innerText}`);
+      apiMessages.push({ role: 'user', content: transcribedText });
+      apiMessages.push({ role: 'assistant', content: replyBubble.dataset.rawText || replyBubble.innerText });
  
       ipcRenderer.send('set-key-status', { keyType: currentType, status: 'healthy' });
       ipcRenderer.send('increment-api-usage', { keyType: currentType });
       success = true;
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log("Request aborted.");
+        if (statusIndicator && statusIndicator.innerText === "[Transcribing audio...]") {
+          statusIndicator.remove();
+        }
+        if (replyBubble) replyBubble.innerText = "[Interrupted]";
+        break;
+      }
+
       const failStatus = error.message.includes("429") ? 'rate-limited' : 'invalid';
       ipcRenderer.send('set-key-status', { keyType: currentType, status: failStatus });
 
-      if (rotateApiKey()) {
+      if (rotateApiKey(labelDiv)) {
         continue; // Retry loop with next key
       }
       if (statusIndicator && statusIndicator.innerText === "[Transcribing audio...]") {
@@ -821,12 +1123,18 @@ function handleMouseMove(e) {
       chatPanel.style.width = `${chatPanelWidth}px`;
       chatPanel.style.height = `${chatPanelHeight}px`;
       
+      const winWidth = Math.max(chatPanelWidth + 40, 800);
+
       // Resize Electron window to fit layout instantly (animate: false)
       ipcRenderer.send('resize-window', { 
-        width: chatPanelWidth + 40, 
+        width: winWidth, 
         height: chatPanelHeight + 120, 
         animate: false 
       });
+      
+      if (typeof positionMenuModal === 'function') {
+        positionMenuModal();
+      }
       
       resizeRafId = null;
     });
@@ -849,10 +1157,195 @@ function handleMouseUp() {
   document.removeEventListener('mouseup', handleMouseUp);
 }
 
+// Session control-bar menu modal positioning and logic
+const menuBtn = document.getElementById('menu-btn');
+const sessionMenuModal = document.getElementById('session-menu-modal');
+
+function positionMenuModal() {
+  if (sessionMenuModal && !sessionMenuModal.classList.contains('collapsed-menu')) {
+    const controlBar = document.getElementById('control-bar');
+    if (controlBar) {
+      const cbRect = controlBar.getBoundingClientRect();
+      sessionMenuModal.style.left = `${cbRect.right + 12}px`;
+      sessionMenuModal.style.top = `${cbRect.top}px`;
+    }
+  }
+}
+
+if (menuBtn && sessionMenuModal) {
+  const sessionModelOptions = document.getElementById('session-model-options');
+  const sessionModelArrow = document.getElementById('session-model-arrow');
+
+  menuBtn.addEventListener('click', () => {
+    const isClosed = sessionMenuModal.classList.contains('collapsed-menu');
+    if (isClosed) {
+      sessionMenuModal.classList.remove('collapsed-menu');
+      positionMenuModal();
+      
+      // If collapsed, expand height to 120px to fit menu modal
+      if (!isExpanded) {
+        const winWidth = Math.max(chatPanelWidth + 40, 800);
+        ipcRenderer.send('resize-window', { width: winWidth, height: 120, animate: false });
+      }
+    } else {
+      sessionMenuModal.classList.add('collapsed-menu');
+      
+      // Also close the dropdown options if they were open
+      if (sessionModelOptions) {
+        sessionModelOptions.classList.add('hidden');
+        sessionModelOptions.classList.remove('flex');
+      }
+      if (sessionModelArrow) sessionModelArrow.style.transform = '';
+
+      // If collapsed, shrink height back to normal 68px
+      if (!isExpanded) {
+        const winWidth = Math.max(chatPanelWidth + 40, 800);
+        ipcRenderer.send('resize-window', { width: winWidth, height: 68, animate: false });
+      }
+    }
+  });
+
+  // Model Switcher Dropdown and Save/Delete Button Logic
+  const sessionModelDropdown = document.getElementById('session-model-dropdown');
+  const sessionModelValue = document.getElementById('session-model-value');
+  const sessionSaveModelBtn = document.getElementById('session-save-model-btn');
+
+  if (sessionModelDropdown && sessionModelOptions) {
+    sessionModelDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = sessionModelOptions.classList.contains('hidden');
+      if (isHidden) {
+        sessionModelOptions.classList.remove('hidden');
+        sessionModelOptions.classList.add('flex');
+        if (sessionModelArrow) sessionModelArrow.style.transform = 'rotate(180deg)';
+        
+        // If collapsed, expand height to 260px to prevent clipping the options list
+        if (!isExpanded) {
+          const winWidth = Math.max(chatPanelWidth + 40, 800);
+          ipcRenderer.send('resize-window', { width: winWidth, height: 260, animate: false });
+        }
+      } else {
+        sessionModelOptions.classList.add('hidden');
+        sessionModelOptions.classList.remove('flex');
+        if (sessionModelArrow) sessionModelArrow.style.transform = '';
+        
+        // If collapsed, shrink height back to 120px
+        if (!isExpanded) {
+          const winWidth = Math.max(chatPanelWidth + 40, 800);
+          ipcRenderer.send('resize-window', { width: winWidth, height: 120, animate: false });
+        }
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!sessionModelDropdown.contains(e.target) && !sessionModelOptions.contains(e.target)) {
+        const wasOpen = !sessionModelOptions.classList.contains('hidden');
+        sessionModelOptions.classList.add('hidden');
+        sessionModelOptions.classList.remove('flex');
+        if (sessionModelArrow) sessionModelArrow.style.transform = '';
+        
+        // If collapsed and dropdown was open, shrink height back to 120px
+        if (wasOpen && !isExpanded) {
+          const winWidth = Math.max(chatPanelWidth + 40, 800);
+          ipcRenderer.send('resize-window', { width: winWidth, height: 120, animate: false });
+        }
+      }
+    });
+
+    const optElements = sessionModelOptions.querySelectorAll('.session-option');
+    optElements.forEach(opt => {
+      opt.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const val = opt.getAttribute('data-value');
+        const text = opt.innerText;
+
+        sessionModelValue.setAttribute('data-selected-value', val);
+        sessionModelValue.innerText = text;
+        sessionModelValue.classList.add('text-white');
+        sessionModelValue.classList.remove('text-gray-400');
+
+        sessionModelOptions.classList.add('hidden');
+        sessionModelOptions.classList.remove('flex');
+        if (sessionModelArrow) sessionModelArrow.style.transform = '';
+
+        // If collapsed, shrink height back to 120px
+        if (!isExpanded) {
+          const winWidth = Math.max(chatPanelWidth + 40, 800);
+          ipcRenderer.send('resize-window', { width: winWidth, height: 120, animate: false });
+        }
+
+        // Auto-save immediately to database
+        const updatedDb = await ipcRenderer.invoke('save-selected-model', val);
+        if (updatedDb) {
+          MODEL_NAME = val;
+        }
+      });
+    });
+  }
+}
+
+async function initSessionModelDropdown() {
+  const sessionModelValue = document.getElementById('session-model-value');
+  const sessionInvisibleToggle = document.getElementById('session-invisible-toggle');
+  const db = await ipcRenderer.invoke('get-db-data');
+  const savedModel = db && db.settings && db.settings.selectedModel ? db.settings.selectedModel : "";
+  
+  if (savedModel) {
+    MODEL_NAME = savedModel;
+    if (sessionModelValue) {
+      sessionModelValue.setAttribute('data-selected-value', savedModel);
+      sessionModelValue.innerText = getFriendlyModelName(savedModel);
+      sessionModelValue.classList.add('text-white');
+      sessionModelValue.classList.remove('text-gray-400');
+    }
+  } else {
+    MODEL_NAME = 'llama-3.3-70b-versatile';
+    if (sessionModelValue) {
+      sessionModelValue.removeAttribute('data-selected-value');
+      sessionModelValue.innerText = "Select Model";
+      sessionModelValue.classList.remove('text-white');
+      sessionModelValue.classList.add('text-gray-400');
+    }
+  }
+
+  // Initialize invisible mode toggle state
+  if (sessionInvisibleToggle && db) {
+    sessionInvisibleToggle.checked = !!db.settings.invisibleMode;
+  }
+}
+
+// Bind session-invisible-toggle events
+document.addEventListener('DOMContentLoaded', () => {
+  const sessionInvisibleToggle = document.getElementById('session-invisible-toggle');
+  if (sessionInvisibleToggle) {
+    sessionInvisibleToggle.addEventListener('change', async (e) => {
+      const enable = e.target.checked;
+      await ipcRenderer.invoke('toggle-invisible-mode', enable);
+    });
+  }
+});
+
+// IPC listener to sync the Invisible Mode checkbox state dynamically
+ipcRenderer.on('invisible-mode-changed', (event, { enable }) => {
+  const sessionInvisibleToggle = document.getElementById('session-invisible-toggle');
+  if (sessionInvisibleToggle) {
+    sessionInvisibleToggle.checked = enable;
+  }
+});
+
+// Reposition modal on window resize and panel expand/collapse
+window.addEventListener('resize', positionMenuModal);
+
+// Intercept window resize IPC messages to keep modal in position
+ipcRenderer.on('window-resized', positionMenuModal);
+
 // Auto-start capture on app launch
 window.addEventListener('DOMContentLoaded', async () => {
   // Set initial window size for collapsed state
-  ipcRenderer.send('resize-window', { width: 720, height: 68 });
+  ipcRenderer.send('resize-window', { width: 800, height: 68 });
+  
+  // Initialize the session model switcher
+  await initSessionModelDropdown();
   
   updateStatus("Initializing listener...");
   try {
@@ -864,3 +1357,40 @@ window.addEventListener('DOMContentLoaded', async () => {
     console.error("Auto-start capture failed:", err);
   }
 });
+
+// PROACTIVE BACKGROUND HEALTH CHECK
+async function runProactiveHealthCheck() {
+  if (GEMINI_API_KEYS.length <= 1) return; // No backups configured
+  const currentKey = GEMINI_API_KEYS[activeKeyIndex] ? GEMINI_API_KEYS[activeKeyIndex].key : '';
+  const currentType = GEMINI_API_KEYS[activeKeyIndex] ? GEMINI_API_KEYS[activeKeyIndex].type : 'primary';
+  if (!currentKey) return;
+
+  try {
+    const response = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentKey}`
+      },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1
+      })
+    });
+    if (response.status === 429) {
+      console.warn(`Proactive Health Check: Key ${currentType} is rate-limited. Rotating pre-emptively...`);
+      ipcRenderer.send('set-key-status', { keyType: currentType, status: 'rate-limited' });
+      rotateApiKey();
+    }
+  } catch (err) {
+    console.error("Proactive Health Check failed:", err);
+  }
+}
+
+// Run health check every 60 seconds if the app is idle
+setInterval(() => {
+  if (!isProcessingResponse) {
+    runProactiveHealthCheck();
+  }
+}, 60000);

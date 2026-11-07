@@ -1,20 +1,21 @@
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, shell } = require('electron');
 
 // DOM Elements
 const startSessionBtn = document.getElementById('start-session-btn');
 const closeBtn = document.getElementById('close-btn');
+const minimizeBtn = document.getElementById('minimize-btn');
 
 // Main Tab buttons & panels
 const tabRecent = document.getElementById('tab-recent');
 const tabFiles = document.getElementById('tab-files');
 const tabKeys = document.getElementById('tab-keys');
+const tabModels = document.getElementById('tab-models');
+const tabInfo = document.getElementById('tab-info');
 const panelRecent = document.getElementById('panel-recent');
 const panelFiles = document.getElementById('panel-files');
 const panelKeys = document.getElementById('panel-keys');
-
-// Subtab buttons inside My Files
-const subtabContext = document.getElementById('subtab-context');
-const subtabRules = document.getElementById('subtab-rules');
+const panelModels = document.getElementById('panel-models');
+const panelInfo = document.getElementById('panel-info');
 
 // API Key inputs & buttons (Primary, Backup 1, Backup 2)
 const apiKeyInput = document.getElementById('api-key-input');
@@ -41,6 +42,16 @@ let tempResume = null;
 const addFileBtn = document.getElementById('add-file-btn');
 const filesListContainer = document.getElementById('files-list-container');
 
+// AI Models UI elements
+const customModelDropdown = document.getElementById('custom-model-dropdown');
+const customModelValue = document.getElementById('custom-model-value');
+const customModelOptions = document.getElementById('custom-model-options');
+const customModelArrow = document.getElementById('custom-model-arrow');
+const saveModelBtn = document.getElementById('save-model-btn');
+const modelsInfoBtn = document.getElementById('models-info-btn');
+const modelsInfoModal = document.getElementById('models-info-modal');
+const modelsModalOkBtn = document.getElementById('models-modal-ok-btn');
+
 // App state
 let localDb = null;
 let activeSubtab = 'context'; // 'context' or 'rules'
@@ -57,6 +68,7 @@ if (startSessionBtn) {
       countdownTimer = null;
       
       // Reset button back to original "Start Session" white theme state
+      startSessionBtn.classList.remove('countdown-running');
       startSessionBtn.innerText = "Start Session";
       startSessionBtn.style.backgroundColor = "#FFFFFF";
       startSessionBtn.style.color = "#131313";
@@ -73,6 +85,7 @@ if (startSessionBtn) {
     secondsLeft = 5;
     
     // Change button styles to a darker cancel theme
+    startSessionBtn.classList.add('countdown-running');
     startSessionBtn.style.backgroundColor = "#2F2F2F";
     startSessionBtn.style.color = "#E2E2E2";
     startSessionBtn.innerText = `Cancel (${secondsLeft}s)`;
@@ -84,10 +97,17 @@ if (startSessionBtn) {
       } else {
         clearInterval(countdownTimer);
         countdownTimer = null;
+        startSessionBtn.classList.remove('countdown-running');
         startSessionBtn.innerText = "Launching...";
         ipcRenderer.send('start-session');
       }
     }, 1000);
+  });
+}
+
+if (minimizeBtn) {
+  minimizeBtn.addEventListener('click', () => {
+    ipcRenderer.send('minimize-window');
   });
 }
 
@@ -111,7 +131,7 @@ function renderUI() {
   if (localDb.settings.apiKey) {
     apiKeyInput.value = localDb.settings.apiKey;
     apiKeyInput.readOnly = true;
-    saveKeyBtn.innerText = "Delete";
+    saveKeyBtn.innerText = "Remove";
   } else {
     apiKeyInput.value = "";
     apiKeyInput.readOnly = false;
@@ -122,7 +142,7 @@ function renderUI() {
   if (localDb.settings.apiKeyBackup1) {
     apiKeyInputBackup1.value = localDb.settings.apiKeyBackup1;
     apiKeyInputBackup1.readOnly = true;
-    saveKeyBtnBackup1.innerText = "Delete";
+    saveKeyBtnBackup1.innerText = "Remove";
   } else {
     apiKeyInputBackup1.value = "";
     apiKeyInputBackup1.readOnly = false;
@@ -133,7 +153,7 @@ function renderUI() {
   if (localDb.settings.apiKeyBackup2) {
     apiKeyInputBackup2.value = localDb.settings.apiKeyBackup2;
     apiKeyInputBackup2.readOnly = true;
-    saveKeyBtnBackup2.innerText = "Delete";
+    saveKeyBtnBackup2.innerText = "Remove";
   } else {
     apiKeyInputBackup2.value = "";
     apiKeyInputBackup2.readOnly = false;
@@ -146,7 +166,7 @@ function renderUI() {
     resumeFileInfo.innerText = localDb.settings.resume.fileName;
     resumeFileInfo.classList.remove('text-gray-500');
     resumeFileInfo.classList.add('text-white');
-    addResumeBtn.innerText = "Delete";
+    addResumeBtn.innerText = "Remove";
   } else if (tempResume) {
     // Resume is selected but not yet saved
     resumeFileInfo.innerText = tempResume.fileName;
@@ -161,21 +181,51 @@ function renderUI() {
     addResumeBtn.innerText = "Add Resume";
   }
 
+  // 4b. Render Selected AI Model
+  if (customModelValue && customModelDropdown) {
+    const activeModelIndicator = document.getElementById('active-model-indicator');
+
+    if (localDb.settings.selectedModel) {
+      const selectedVal = localDb.settings.selectedModel;
+      customModelValue.innerText = selectedVal;
+      customModelValue.setAttribute('data-selected-value', selectedVal);
+      customModelValue.classList.remove('text-gray-400');
+      customModelValue.classList.add('text-white');
+      
+      if (activeModelIndicator) {
+        activeModelIndicator.innerText = selectedVal;
+        activeModelIndicator.style.fontStyle = "normal";
+        activeModelIndicator.style.color = "#FFFFFF";
+      }
+    } else {
+      customModelValue.innerText = "Select Model";
+      customModelValue.removeAttribute('data-selected-value');
+      customModelValue.classList.add('text-gray-400');
+      customModelValue.classList.remove('text-white');
+      
+      if (activeModelIndicator) {
+        activeModelIndicator.innerText = "no model";
+        activeModelIndicator.style.fontStyle = "italic";
+        activeModelIndicator.style.color = "#9CA3AF";
+      }
+    }
+  }
+
   // 5. Render Sessions list
   panelRecent.innerHTML = "";
   if (localDb.sessions && localDb.sessions.length > 0) {
     localDb.sessions.forEach(sess => {
       const row = document.createElement('div');
-      row.className = "flex items-center justify-between py-2 min-w-0 overflow-hidden";
+      row.className = "flex items-center justify-between py-4 min-w-0 overflow-hidden";
       
       row.innerHTML = `
+        <button class="delete-session-btn hover:opacity-80 transition-all p-1 mr-3 flex-shrink-0" data-id="${sess.id}" title="Delete Session">
+          <img src="https://img.icons8.com/fluency-systems-regular/96/FA5252/trash--v1.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">
+        </button>
         <span class="text-sm font-normal truncate pr-4 min-w-0 flex-grow" title="${sess.name}">${sess.name}</span>
-        <div class="flex items-center space-x-4 flex-shrink-0">
-          <span class="text-xs bg-gray-800 text-gray-400 px-3 py-1 rounded-full font-medium">${sess.duration}</span>
-          <span class="text-xs text-gray-400 font-medium">${sess.date}</span>
-          <button class="delete-session-btn hover:text-red-500 transition-all p-1 flex-shrink-0" data-id="${sess.id}" title="Delete Session">
-            <img src="https://img.icons8.com/fluency-systems-regular/96/FA5252/trash--v1.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">
-          </button>
+        <div class="flex items-center space-x-3.5 flex-shrink-0">
+          <span class="text-xs bg-theme-btn text-gray-200 px-3 py-1 rounded-full font-medium">${sess.duration}</span>
+          <span class="text-xs text-gray-300 font-medium">${sess.date}</span>
         </div>
       `;
 
@@ -198,21 +248,21 @@ function renderUI() {
   if (filesList && filesList.length > 0) {
     filesList.forEach(file => {
       const fileRow = document.createElement('div');
-      fileRow.className = "flex items-center justify-between py-1.5 min-w-0 overflow-hidden";
+      fileRow.className = "flex items-center justify-start py-2.5 min-w-0 overflow-hidden";
       
-      const nameSpan = document.createElement('span');
-      nameSpan.className = "text-xs font-normal text-gray-200 truncate pr-2 min-w-0";
-      nameSpan.innerText = file.fileName;
-      fileRow.appendChild(nameSpan);
-
       const delBtn = document.createElement('button');
-      delBtn.className = "hover:text-red-500 transition-all p-1 flex-shrink-0";
+      delBtn.className = "hover:opacity-80 transition-all p-1 mr-3 flex-shrink-0";
       delBtn.innerHTML = `<img src="https://img.icons8.com/fluency-systems-regular/96/FA5252/trash--v1.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">`;
       delBtn.addEventListener('click', async () => {
         localDb = await ipcRenderer.invoke('delete-file', { type: activeSubtab, id: file.id });
         renderUI();
       });
       fileRow.appendChild(delBtn);
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = "text-xs font-normal text-gray-200 truncate min-w-0 flex-grow";
+      nameSpan.innerText = file.fileName;
+      fileRow.appendChild(nameSpan);
 
       filesListContainer.appendChild(fileRow);
     });
@@ -222,6 +272,12 @@ function renderUI() {
 
   // Always refresh analytics charts
   renderAnalytics();
+
+  // 6. Render Settings Toggle
+  const invisibleModeToggle = document.getElementById('invisible-mode-toggle');
+  if (invisibleModeToggle) {
+    invisibleModeToggle.checked = !!localDb.settings.invisibleMode;
+  }
 }
 
 // Save / Delete API Key Event Handlers
@@ -232,7 +288,7 @@ if (saveKeyBtn) {
       const key = apiKeyInput.value.trim();
       if (!key) { alert("Please enter a valid API Key first!"); return; }
       ipcRenderer.send('save-api-key', { type: 'primary', key });
-    } else if (btnText === "Delete") {
+    } else if (btnText === "Remove") {
       ipcRenderer.send('save-api-key', { type: 'primary', key: "" });
     }
   });
@@ -245,7 +301,7 @@ if (saveKeyBtnBackup1) {
       const key = apiKeyInputBackup1.value.trim();
       if (!key) { alert("Please enter a valid API Key first!"); return; }
       ipcRenderer.send('save-api-key', { type: 'backup1', key });
-    } else if (btnText === "Delete") {
+    } else if (btnText === "Remove") {
       ipcRenderer.send('save-api-key', { type: 'backup1', key: "" });
     }
   });
@@ -258,7 +314,7 @@ if (saveKeyBtnBackup2) {
       const key = apiKeyInputBackup2.value.trim();
       if (!key) { alert("Please enter a valid API Key first!"); return; }
       ipcRenderer.send('save-api-key', { type: 'backup2', key });
-    } else if (btnText === "Delete") {
+    } else if (btnText === "Remove") {
       ipcRenderer.send('save-api-key', { type: 'backup2', key: "" });
     }
   });
@@ -288,7 +344,7 @@ if (addResumeBtn) {
           renderUI();
         }
       }
-    } else if (btnText === "Delete") {
+    } else if (btnText === "Remove") {
       const updatedDb = await ipcRenderer.invoke('delete-file', { type: 'resume' });
       if (updatedDb) {
         localDb = updatedDb;
@@ -311,138 +367,82 @@ if (addFileBtn) {
 }
 
 // Main Tabs Navigation Logic
-if (tabRecent && tabFiles && tabKeys && panelRecent && panelFiles && panelKeys) {
+// Main Tabs Navigation Logic
+if (tabRecent && tabFiles && tabKeys && tabModels && tabInfo && panelRecent && panelFiles && panelKeys && panelModels && panelInfo) {
   tabRecent.addEventListener('click', () => {
     tabRecent.classList.add('active');
     tabFiles.classList.remove('active');
     tabKeys.classList.remove('active');
+    tabModels.classList.remove('active');
+    tabInfo.classList.remove('active');
     panelRecent.classList.remove('hidden');
     panelFiles.classList.add('hidden');
     panelKeys.classList.add('hidden');
-    if (keysInfoBtn) keysInfoBtn.classList.add('hidden');
-    if (filesInfoBtn) filesInfoBtn.classList.add('hidden');
-    if (recentInfoBtn) recentInfoBtn.classList.remove('hidden');
+    panelModels.classList.add('hidden');
+    panelInfo.classList.add('hidden');
   });
 
   tabFiles.addEventListener('click', () => {
     tabFiles.classList.add('active');
     tabRecent.classList.remove('active');
     tabKeys.classList.remove('active');
+    tabModels.classList.remove('active');
+    tabInfo.classList.remove('active');
     panelFiles.classList.remove('hidden');
     panelFiles.classList.add('flex');
     panelRecent.classList.add('hidden');
     panelKeys.classList.add('hidden');
-    if (keysInfoBtn) keysInfoBtn.classList.add('hidden');
-    if (filesInfoBtn) filesInfoBtn.classList.remove('hidden');
-    if (recentInfoBtn) recentInfoBtn.classList.add('hidden');
+    panelModels.classList.add('hidden');
+    panelInfo.classList.add('hidden');
   });
 
   tabKeys.addEventListener('click', () => {
     tabKeys.classList.add('active');
     tabRecent.classList.remove('active');
     tabFiles.classList.remove('active');
+    tabModels.classList.remove('active');
+    tabInfo.classList.remove('active');
     panelKeys.classList.remove('hidden');
     panelKeys.classList.add('flex');
     panelRecent.classList.add('hidden');
     panelFiles.classList.add('hidden');
-    if (keysInfoBtn) keysInfoBtn.classList.remove('hidden');
-    if (filesInfoBtn) filesInfoBtn.classList.add('hidden');
-    if (recentInfoBtn) recentInfoBtn.classList.add('hidden');
+    panelModels.classList.add('hidden');
+    panelInfo.classList.add('hidden');
+  });
+
+  tabModels.addEventListener('click', () => {
+    tabModels.classList.add('active');
+    tabRecent.classList.remove('active');
+    tabFiles.classList.remove('active');
+    tabKeys.classList.remove('active');
+    tabInfo.classList.remove('active');
+    panelModels.classList.remove('hidden');
+    panelModels.classList.add('flex');
+    panelRecent.classList.add('hidden');
+    panelFiles.classList.add('hidden');
+    panelKeys.classList.add('hidden');
+    panelInfo.classList.add('hidden');
+  });
+
+  tabInfo.addEventListener('click', () => {
+    tabInfo.classList.add('active');
+    tabRecent.classList.remove('active');
+    tabFiles.classList.remove('active');
+    tabKeys.classList.remove('active');
+    tabModels.classList.remove('active');
+    panelInfo.classList.remove('hidden');
+    panelInfo.classList.add('flex');
+    panelRecent.classList.add('hidden');
+    panelFiles.classList.add('hidden');
+    panelKeys.classList.add('hidden');
+    panelModels.classList.add('hidden');
   });
 }
 
-// My Files Subtabs Navigation Logic
-if (subtabContext && subtabRules) {
-  const activeSubtabClasses = ['border-b-2', 'border-white', 'text-white'];
-  const inactiveSubtabClasses = ['text-gray-400'];
-
-  subtabContext.addEventListener('click', () => {
-    activeSubtab = 'context';
-    subtabContext.classList.add(...activeSubtabClasses);
-    subtabContext.classList.remove(...inactiveSubtabClasses);
-    subtabRules.classList.remove(...activeSubtabClasses);
-    subtabRules.classList.add(...inactiveSubtabClasses);
-    renderUI();
-  });
-
-  subtabRules.addEventListener('click', () => {
-    activeSubtab = 'rules';
-    subtabRules.classList.add(...activeSubtabClasses);
-    subtabRules.classList.remove(...inactiveSubtabClasses);
-    subtabContext.classList.remove(...activeSubtabClasses);
-    subtabContext.classList.add(...inactiveSubtabClasses);
-    renderUI();
-  });
-}
+// My Files subtabs logic removed. Stays context-only.
 
 // API Key Information Modal Logic
-const analyticsInfoBtn = document.getElementById('analytics-info-btn');
-const analyticsInfoModal = document.getElementById('analytics-info-modal');
-const analyticsModalOkBtn = document.getElementById('analytics-modal-ok-btn');
 
-const keysInfoBtn = document.getElementById('keys-info-btn');
-const keysInfoModal = document.getElementById('keys-info-modal');
-const keysModalOkBtn = document.getElementById('keys-modal-ok-btn');
-
-const filesInfoBtn = document.getElementById('files-info-btn');
-const filesInfoModal = document.getElementById('files-info-modal');
-const filesModalOkBtn = document.getElementById('files-modal-ok-btn');
-
-const recentInfoBtn = document.getElementById('recent-info-btn');
-const recentInfoModal = document.getElementById('recent-info-modal');
-const recentModalOkBtn = document.getElementById('recent-modal-ok-btn');
-
-if (analyticsInfoBtn && analyticsInfoModal) {
-  analyticsInfoBtn.addEventListener('click', () => {
-    analyticsInfoModal.classList.remove('hidden');
-  });
-}
-if (analyticsInfoModal) {
-  const hideAnalyticsModal = () => { analyticsInfoModal.classList.add('hidden'); };
-  if (analyticsModalOkBtn) analyticsModalOkBtn.addEventListener('click', hideAnalyticsModal);
-  analyticsInfoModal.addEventListener('click', (e) => {
-    if (e.target === analyticsInfoModal) hideAnalyticsModal();
-  });
-}
-
-if (keysInfoBtn && keysInfoModal) {
-  keysInfoBtn.addEventListener('click', () => {
-    keysInfoModal.classList.remove('hidden');
-  });
-}
-if (keysInfoModal) {
-  const hideKeysModal = () => { keysInfoModal.classList.add('hidden'); };
-  if (keysModalOkBtn) keysModalOkBtn.addEventListener('click', hideKeysModal);
-  keysInfoModal.addEventListener('click', (e) => {
-    if (e.target === keysInfoModal) hideKeysModal();
-  });
-}
-
-if (filesInfoBtn && filesInfoModal) {
-  filesInfoBtn.addEventListener('click', () => {
-    filesInfoModal.classList.remove('hidden');
-  });
-}
-if (filesInfoModal) {
-  const hideFilesModal = () => { filesInfoModal.classList.add('hidden'); };
-  if (filesModalOkBtn) filesModalOkBtn.addEventListener('click', hideFilesModal);
-  filesInfoModal.addEventListener('click', (e) => {
-    if (e.target === filesInfoModal) hideFilesModal();
-  });
-}
-
-if (recentInfoBtn && recentInfoModal) {
-  recentInfoBtn.addEventListener('click', () => {
-    recentInfoModal.classList.remove('hidden');
-  });
-}
-if (recentInfoModal) {
-  const hideRecentModal = () => { recentInfoModal.classList.add('hidden'); };
-  if (recentModalOkBtn) recentModalOkBtn.addEventListener('click', hideRecentModal);
-  recentInfoModal.addEventListener('click', (e) => {
-    if (e.target === recentInfoModal) hideRecentModal();
-  });
-}
 
 // API Key Show/Hide Password Toggle Logic (Primary, Backup 1, Backup 2)
 if (togglePasswordBtn && togglePasswordIcon && apiKeyInput) {
@@ -510,17 +510,23 @@ function renderAnalytics() {
     const finalStatus = isSaved ? (savedStatus || "healthy") : "unused";
 
     if (finalStatus === "unused") {
-      statusBadge.className = "text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700";
+      statusBadge.className = "text-xs px-2 py-0.5 rounded-full text-gray-400 border border-gray-700";
+      statusBadge.style.backgroundColor = "#131313";
+      statusBadge.style.borderColor = "rgba(47, 47, 47, 0.6)";
       statusBadge.innerText = "Unused";
-    } else if (finalStatus === "rate-limited") {
-      statusBadge.className = "text-xs px-2 py-0.5 rounded-full bg-yellow-950 bg-opacity-35 text-yellow-400 border border-yellow-700";
-      statusBadge.innerText = "Rate Limited";
-    } else if (finalStatus === "invalid") {
-      statusBadge.className = "text-xs px-2 py-0.5 rounded-full bg-red-950 bg-opacity-35 text-red-400 border border-red-700";
-      statusBadge.innerText = "Invalid";
     } else {
-      statusBadge.className = "text-xs px-2 py-0.5 rounded-full bg-green-900 bg-opacity-35 text-green-400 border border-green-700";
-      statusBadge.innerText = "Healthy";
+      statusBadge.style.backgroundColor = "";
+      statusBadge.style.borderColor = "";
+      if (finalStatus === "rate-limited") {
+        statusBadge.className = "text-xs px-2 py-0.5 rounded-full bg-yellow-950 bg-opacity-35 text-yellow-400 border border-yellow-700";
+        statusBadge.innerText = "Rate Limited";
+      } else if (finalStatus === "invalid") {
+        statusBadge.className = "text-xs px-2 py-0.5 rounded-full bg-red-950 bg-opacity-35 text-red-400 border border-red-700";
+        statusBadge.innerText = "Invalid";
+      } else {
+        statusBadge.className = "text-xs px-2 py-0.5 rounded-full bg-green-900 bg-opacity-35 text-green-400 border border-green-700";
+        statusBadge.innerText = "Healthy";
+      }
     }
 
     // 3. Draw last 7 days crypto-style glowing line chart
@@ -602,11 +608,35 @@ function renderAnalytics() {
       circle.setAttribute("stroke-width", "1");
       circle.setAttribute("class", "cursor-pointer transition-all duration-200 hover:scale-150");
       
-      // Native tooltip content
-      const titleText = `${new Date(p.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${p.count} queries`;
-      const title = document.createElementNS(svgNamespace, "title");
-      title.textContent = titleText;
-      circle.appendChild(title);
+
+
+      // Custom Floating HTML Tooltip Trigger on Hover
+      circle.addEventListener('mouseenter', (e) => {
+        const tooltip = document.getElementById('analytics-tooltip');
+        const tooltipDate = document.getElementById('tooltip-date');
+        const tooltipQueries = document.getElementById('tooltip-queries');
+        if (!tooltip || !tooltipDate || !tooltipQueries) return;
+
+        const dateStr = new Date(p.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        tooltipDate.innerText = dateStr;
+        tooltipQueries.innerText = `${p.count} queries`;
+
+        const rect = circle.getBoundingClientRect();
+        tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - 45}px`;
+        tooltip.style.top = `${rect.top + window.scrollY - 44}px`;
+
+        tooltip.classList.remove('hidden');
+        tooltip.classList.add('flex');
+      });
+
+      circle.addEventListener('mouseleave', () => {
+        const tooltip = document.getElementById('analytics-tooltip');
+        if (tooltip) {
+          tooltip.classList.add('hidden');
+          tooltip.classList.remove('flex');
+        }
+      });
+
       svg.appendChild(circle);
 
       // Text label at bottom
@@ -625,6 +655,137 @@ function renderAnalytics() {
     graphContainer.appendChild(svg);
   });
 }
+
+// Custom Model Dropdown Toggle & Selection Logic
+if (customModelDropdown && customModelOptions && customModelArrow && customModelValue) {
+  // Toggle Dropdown List Visibility
+  customModelDropdown.addEventListener('click', () => {
+    if (customModelDropdown.classList.contains('disabled')) return;
+    const isHidden = customModelOptions.classList.contains('hidden');
+    if (isHidden) {
+      customModelOptions.classList.remove('hidden');
+      customModelOptions.classList.add('flex');
+      customModelArrow.style.transform = 'rotate(180deg)';
+    } else {
+      customModelOptions.classList.add('hidden');
+      customModelOptions.classList.remove('flex');
+      customModelArrow.style.transform = '';
+    }
+  });
+
+  // Close Dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!customModelDropdown.contains(e.target) && !customModelOptions.contains(e.target)) {
+      customModelOptions.classList.add('hidden');
+      customModelOptions.classList.remove('flex');
+      customModelArrow.style.transform = '';
+    }
+  });
+
+  // Select Option Click Handler
+  const options = customModelOptions.querySelectorAll('.custom-option');
+  options.forEach(opt => {
+    opt.addEventListener('click', async () => {
+      const val = opt.getAttribute('data-value');
+      const text = opt.innerText;
+
+      customModelValue.setAttribute('data-selected-value', val);
+      customModelValue.innerText = text;
+      customModelValue.classList.add('text-white');
+      customModelValue.classList.remove('text-gray-400');
+
+      customModelOptions.classList.add('hidden');
+      customModelOptions.classList.remove('flex');
+      if (customModelArrow) customModelArrow.style.transform = '';
+
+      // Auto-save immediately to database
+      const updatedDb = await ipcRenderer.invoke('save-selected-model', val);
+      if (updatedDb) {
+        localDb = updatedDb;
+        renderUI();
+      }
+    });
+  });
+}
+
+// Link handler to open Groq models page in default desktop browser
+const viewModelsLink = document.getElementById('view-models-link');
+if (viewModelsLink) {
+  viewModelsLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    shell.openExternal('https://console.groq.com/docs/models');
+  });
+}
+
+// Copy command listener for local data documentation
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.copy-db-cmd-btn');
+  if (btn) {
+    const cmdText = btn.getAttribute('data-cmd');
+    if (cmdText) {
+      try {
+        await navigator.clipboard.writeText(cmdText);
+        // Show temporary checkmark feedback on copy icon
+        const img = btn.querySelector('img');
+        if (img) {
+          const originalSrc = img.src;
+          const originalFilter = img.style.filter;
+          img.src = "https://img.icons8.com/ios-filled/100/checkmark--v1.png";
+          img.style.filter = "invert(48%) sepia(97%) saturate(583%) hue-rotate(113deg) brightness(95%) contrast(98%)"; // Green
+          setTimeout(() => {
+            img.src = originalSrc;
+            img.style.filter = originalFilter;
+          }, 1000);
+        }
+      } catch (err) {
+        console.error("Failed to copy command:", err);
+      }
+    }
+  }
+});
+
+// Settings Modal Interaction
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModal = document.getElementById('settings-modal');
+const closeSettingsModalBtn = document.getElementById('close-settings-modal-btn');
+const invisibleModeToggle = document.getElementById('invisible-mode-toggle');
+
+if (settingsBtn && settingsModal) {
+  settingsBtn.addEventListener('click', () => {
+    settingsModal.classList.remove('hidden');
+    settingsModal.classList.add('flex');
+    if (invisibleModeToggle && localDb) {
+      invisibleModeToggle.checked = !!localDb.settings.invisibleMode;
+    }
+  });
+}
+
+if (closeSettingsModalBtn && settingsModal) {
+  closeSettingsModalBtn.addEventListener('click', () => {
+    settingsModal.classList.add('hidden');
+    settingsModal.classList.remove('flex');
+  });
+}
+
+if (invisibleModeToggle) {
+  invisibleModeToggle.addEventListener('change', async (e) => {
+    const enable = e.target.checked;
+    const updatedDb = await ipcRenderer.invoke('toggle-invisible-mode', enable);
+    if (updatedDb) {
+      localDb = updatedDb;
+    }
+  });
+}
+
+// IPC listener to sync the Invisible Mode checkbox state dynamically
+ipcRenderer.on('invisible-mode-changed', (event, { enable }) => {
+  if (localDb) {
+    localDb.settings.invisibleMode = enable;
+  }
+  if (invisibleModeToggle) {
+    invisibleModeToggle.checked = enable;
+  }
+});
 
 // Launch database load on script parse
 loadDbData();

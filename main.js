@@ -37,8 +37,7 @@ function initDatabase() {
           fileName: "",
           content: ""
         },
-        contexts: [],
-        rules: []
+        contexts: []
       },
       apiUsageHistory: {
         primary: {},
@@ -58,12 +57,16 @@ function initDatabase() {
 function readDatabase() {
   initDatabase();
   try {
-    const data = fs.readFileSync(dbPath, 'utf-8');
-    return JSON.parse(data);
+    let data = fs.readFileSync(dbPath, 'utf-8');
+    if (data.charCodeAt(0) === 0xFEFF) {
+      data = data.slice(1);
+    }
+    const db = JSON.parse(data);
+    return db;
   } catch (e) {
     console.error("Failed to read database:", e);
     return {
-      settings: { apiKey: "", resume: { fileName: "", content: "" }, contexts: [], rules: [] },
+      settings: { apiKey: "", resume: { fileName: "", content: "" }, contexts: [] },
       sessions: []
     };
   }
@@ -97,7 +100,7 @@ function createSessionsWindow() {
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    skipTaskbar: true,
+    skipTaskbar: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -106,11 +109,16 @@ function createSessionsWindow() {
   });
 
   sessionsWindow.loadFile('co-assist_ai_landing.html');
-  sessionsWindow.webContents.openDevTools();
+  // sessionsWindow.webContents.openDevTools({ mode: 'detach' });
 
-  sessionsWindow.once('ready-to-show', () => {
-    sessionsWindow.show();
-  });
+  // Load Content Protection settings
+  const db = readDatabase();
+  if (db && db.settings && db.settings.invisibleMode) {
+    sessionsWindow.setContentProtection(true);
+  }
+
+  sessionsWindow.show();
+  sessionsWindow.focus();
 }
 
 function createWindow() {
@@ -142,7 +150,13 @@ function createWindow() {
   });
 
   mainWindow.loadFile('co-assist_ai_session.html');
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools({ mode: 'detach' });
+
+  // Load Content Protection settings
+  const sessionDb = readDatabase();
+  if (sessionDb && sessionDb.settings && sessionDb.settings.invisibleMode) {
+    mainWindow.setContentProtection(true);
+  }
 
   // Avoid visual flashing on load
   mainWindow.once('ready-to-show', () => {
@@ -219,8 +233,15 @@ ipcMain.on('close-window', () => {
   app.quit();
 });
 
-ipcMain.on('minimize-window', () => {
-  if (mainWindow) mainWindow.minimize();
+ipcMain.on('minimize-window', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.minimize();
+  } else if (sessionsWindow) {
+    sessionsWindow.minimize();
+  } else if (mainWindow) {
+    mainWindow.minimize();
+  }
 });
 
 ipcMain.handle('get-desktop-sources', async () => {
@@ -249,6 +270,21 @@ ipcMain.handle('get-db-data', () => {
   return readDatabase();
 });
 
+ipcMain.handle('save-selected-model', (event, selectedModel) => {
+  const db = readDatabase();
+  db.settings.selectedModel = selectedModel;
+  writeDatabase(db);
+  return db;
+});
+
+ipcMain.handle('delete-selected-model', (event) => {
+  const db = readDatabase();
+  delete db.settings.selectedModel;
+  writeDatabase(db);
+  return db;
+});
+
+
 ipcMain.on('save-api-key', (event, { type, key }) => {
   const db = readDatabase();
   if (type === 'primary') db.settings.apiKey = key;
@@ -271,6 +307,19 @@ ipcMain.on('set-key-status', (event, { keyType, status }) => {
   }
   db.keyStatuses[keyType] = status;
   writeDatabase(db);
+
+  // AUTO-RECOVERY TIMER:
+  // If the status is rate-limited, start a 60-second recovery timer to reset it back to healthy!
+  if (status === 'rate-limited') {
+    setTimeout(() => {
+      const currentDb = readDatabase();
+      if (currentDb.keyStatuses && currentDb.keyStatuses[keyType] === 'rate-limited') {
+        currentDb.keyStatuses[keyType] = 'healthy';
+        writeDatabase(currentDb);
+        console.log(`Auto-recovery timer: Key ${keyType} restored back to healthy status`);
+      }
+    }, 60000);
+  }
 });
 
 ipcMain.on('increment-api-usage', (event, { keyType }) => {
@@ -307,10 +356,6 @@ ipcMain.handle('upload-file', async (event, type) => {
     if (!db.settings.contexts.some(c => c.fileName === fileName)) {
       db.settings.contexts.push({ id: Date.now().toString(), fileName, content });
     }
-  } else if (type === 'rules') {
-    if (!db.settings.rules.some(r => r.fileName === fileName)) {
-      db.settings.rules.push({ id: Date.now().toString(), fileName, content });
-    }
   }
 
   writeDatabase(db);
@@ -340,14 +385,14 @@ ipcMain.handle('save-resume', async (event, resumeData) => {
   return db;
 });
 
+
+
 ipcMain.handle('delete-file', async (event, { type, id }) => {
   const db = readDatabase();
   if (type === 'resume') {
     db.settings.resume = { fileName: "", content: "" };
   } else if (type === 'context') {
     db.settings.contexts = db.settings.contexts.filter(c => c.id !== id);
-  } else if (type === 'rules') {
-    db.settings.rules = db.settings.rules.filter(r => r.id !== id);
   }
 
   writeDatabase(db);
@@ -358,5 +403,20 @@ ipcMain.on('save-session', (event, sessionItem) => {
   const db = readDatabase();
   db.sessions.push(sessionItem);
   writeDatabase(db);
+});
+
+// IPC Handler to dynamically toggle Invisible Mode across all active windows
+ipcMain.handle('toggle-invisible-mode', async (event, enable) => {
+  const db = readDatabase();
+  db.settings.invisibleMode = enable;
+  writeDatabase(db);
+
+  if (sessionsWindow && !sessionsWindow.isDestroyed()) {
+    sessionsWindow.setContentProtection(enable);
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setContentProtection(enable);
+  }
+  return db;
 });
 
