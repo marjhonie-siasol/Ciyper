@@ -268,10 +268,9 @@
                   
                    <!-- Custom styled dropdown list (renders strictly below the trigger) -->
                   <div id="custom-model-options" class="absolute left-0 right-0 top-full mt-1.5 border border-theme-border rounded-lg shadow-2xl z-50 hidden flex-col overflow-hidden" style="background-color: #131313;">
-                    <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</div>
-                    <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="llama-3.1-8b-instant">llama-3.1-8b-instant</div>
                     <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="openai/gpt-oss-120b">openai/gpt-oss-120b</div>
                     <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="openai/gpt-oss-20b">openai/gpt-oss-20b</div>
+                    <div class="custom-option px-3 py-2.5 text-xs text-white cursor-pointer transition-colors" data-value="qwen/qwen3.8-27b">qwen/qwen3.8-27b</div>
                   </div>
                 </div>
               </div>
@@ -279,34 +278,27 @@
               <!-- Descriptive Information Bullets (Scrollable Container) -->
               <div class="flex-grow overflow-y-auto custom-scroll pr-1 mt-4">
                 <span class="text-sm font-semibold text-gray-300">Model Selection Guide</span>
-                <p class="text-sm text-gray-400 font-normal mt-1 mb-2">These models are based on the available best Groq production models. <a href="#" id="view-models-link" class="text-blue-400 hover:underline ml-1">view models<img src="https://img.icons8.com/external-jumpicon-line-ayub-irawan/64/external-arrow-arrows-jumpicon-line-jumpicon-line-ayub-irawan-39.png" alt="arrow" class="w-3.5 h-3.5 ml-0.5 inline-block align-middle" style="filter: invert(58%) sepia(84%) saturate(849%) hue-rotate(189deg) brightness(101%) contrast(97%);"></a></p>
+                <p class="text-sm text-gray-400 font-normal mt-1 mb-2">These models are based on the latest available Groq production and active developer models. <a href="#" id="view-models-link" class="text-blue-400 hover:underline ml-1">view models<img src="https://img.icons8.com/external-jumpicon-line-ayub-irawan/64/external-arrow-arrows-jumpicon-line-jumpicon-line-ayub-irawan-39.png" alt="arrow" class="w-3.5 h-3.5 ml-0.5 inline-block align-middle" style="filter: invert(58%) sepia(84%) saturate(849%) hue-rotate(189deg) brightness(101%) contrast(97%);"></a></p>
                 <ul class="list-disc pl-4 space-y-3.5 text-sm text-gray-400 mt-2 font-normal">
                   <li>
-                    <strong>llama-3.3-70b-versatile:</strong> Best for complex coding interviews and advanced reasoning tasks, offering high accuracy with a 131k context window and a 32k max output limit during live sessions.
+                    <strong>openai/gpt-oss-120b:</strong> Flagship open-weight 120B reasoning model (MoE) for complex software engineering interviews, advanced algorithms, and deep math logic. Features a 131k context window and a 65k max output limit.
                     <div class="pl-4 mt-1 text-sm text-gray-400 font-normal">
-                      <span class="text-green-400 font-semibold">Pros:</span> Highly accurate, strong coding correctness and multilingual capabilities.<br>
-                      <span class="text-red-400 font-semibold">Cons:</span> High latency, slower generation speed for quick answers (approx. 0.5-0.8s response time).
+                      <span class="text-green-400 font-semibold">Pros:</span> Frontier-grade reasoning, exceptional coding accuracy, and long-horizon problem solving (~500 tps).<br>
+                      <span class="text-red-400 font-semibold">Cons:</span> Larger token compute footprint compared to 20B.
                     </div>
                   </li>
                   <li>
-                    <strong>llama-3.1-8b-instant:</strong> Ideal for fast, real-time meeting transcripts and conversational assistance, offering low-latency feedback with a 131k context window and a 131k max output limit during live sessions.
+                    <strong>openai/gpt-oss-20b:</strong> Ultra-fast, lightweight 20B Mixture-of-Experts (MoE) model optimized for real-time interview transcripts, conversational banter, and immediate answers. Offers a 131k context window and a 65k max output limit.
                     <div class="pl-4 mt-1 text-sm text-gray-400 font-normal">
-                      <span class="text-green-400 font-semibold">Pros:</span> Near-instant responses (approx. 0.2-0.5s response time), cost-efficient, native function calling support.<br>
-                      <span class="text-red-400 font-semibold">Cons:</span> May struggle with deep math logic or complex software architecture.
+                      <span class="text-green-400 font-semibold">Pros:</span> Blazing speed (~1,000 tokens/sec), sub-second latency, highly cost-effective and responsive.<br>
+                      <span class="text-red-400 font-semibold">Cons:</span> Slightly less specialized on theoretical multi-tier architectural edge-cases than 120B.
                     </div>
                   </li>
                   <li>
-                    <strong>openai/gpt-oss-120b:</strong> Flagship reasoning model for complex software engineering interviews and deep math logic, offering agentic power with a 131k context window and a 65k max output limit during live sessions.
+                    <strong>qwen/qwen3.8-27b:</strong> Compact 27B dense model tailored for agentic coding, multi-step environment planning, and technical STEM problem solving with a 131k context window and 16k output limit.
                     <div class="pl-4 mt-1 text-sm text-gray-400 font-normal">
-                      <span class="text-green-400 font-semibold">Pros:</span> Excellent advanced reasoning, MoE architecture, matches proprietary engines.<br>
-                      <span class="text-red-400 font-semibold">Cons:</span> High computational overhead, slowest response speed (approx. 0.7-1.0s response time).
-                    </div>
-                  </li>
-                  <li>
-                    <strong>openai/gpt-oss-20b:</strong> Highly cost-efficient assistant for quick summaries and routine tool calling tasks, offering lightweight MoE performance with a 131k context window and a 65k max output limit during live sessions.
-                    <div class="pl-4 mt-1 text-sm text-gray-400 font-normal">
-                      <span class="text-green-400 font-semibold">Pros:</span> Small memory footprint, fast tool execution (approx. 0.3-0.7s response time), highly economical.<br>
-                      <span class="text-red-400 font-semibold">Cons:</span> Limited capabilities on highly complex code reasoning tasks.
+                      <span class="text-green-400 font-semibold">Pros:</span> Strong code synthesis, detailed technical explanations, flexible reasoning modes.<br>
+                      <span class="text-red-400 font-semibold">Cons:</span> 16k max completion token ceiling.
                     </div>
                   </li>
                 </ul>
@@ -365,7 +357,7 @@
                   <ul class="list-disc pl-4 space-y-1 text-sm text-gray-400 font-normal">
                     <li><strong>Pre-Session Options:</strong> Choose which AI model you want to proceed with before starting a chat session, offering complete options control.</li>
                     <li><strong>Groq Production Catalog:</strong> The catalog and backend API executions are based directly on Groq's official production model listings and documentation.</li>
-                    <li><strong>Model Capabilities & Power:</strong> Gives you direct control over processing power, ranging from lightweight models to flagship reasoning engines (like openai/gpt-oss-120b and llama-3.3-70b-versatile) for complex logic tasks.</li>
+                    <li><strong>Model Capabilities & Power:</strong> Gives you direct control over processing power, ranging from ultra-fast ~1000 tps conversational models (like openai/gpt-oss-20b) to flagship reasoning engines (like openai/gpt-oss-120b) for complex logic tasks.</li>
                   </ul>
                 </div>
 

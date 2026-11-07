@@ -184,30 +184,22 @@ function renderUI() {
   // 4b. Render Selected AI Model
   if (customModelValue && customModelDropdown) {
     const activeModelIndicator = document.getElementById('active-model-indicator');
+    const validModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
 
-    if (localDb.settings.selectedModel) {
-      const selectedVal = localDb.settings.selectedModel;
-      customModelValue.innerText = selectedVal;
-      customModelValue.setAttribute('data-selected-value', selectedVal);
-      customModelValue.classList.remove('text-gray-400');
-      customModelValue.classList.add('text-white');
-      
-      if (activeModelIndicator) {
-        activeModelIndicator.innerText = selectedVal;
-        activeModelIndicator.style.fontStyle = "normal";
-        activeModelIndicator.style.color = "#FFFFFF";
-      }
-    } else {
-      customModelValue.innerText = "Select Model";
-      customModelValue.removeAttribute('data-selected-value');
-      customModelValue.classList.add('text-gray-400');
-      customModelValue.classList.remove('text-white');
-      
-      if (activeModelIndicator) {
-        activeModelIndicator.innerText = "no model";
-        activeModelIndicator.style.fontStyle = "italic";
-        activeModelIndicator.style.color = "#9CA3AF";
-      }
+    let selectedVal = localDb.settings.selectedModel;
+    if (!selectedVal || !validModels.includes(selectedVal)) {
+      selectedVal = 'openai/gpt-oss-120b';
+    }
+
+    customModelValue.innerText = selectedVal;
+    customModelValue.setAttribute('data-selected-value', selectedVal);
+    customModelValue.classList.remove('text-gray-400');
+    customModelValue.classList.add('text-white');
+    
+    if (activeModelIndicator) {
+      activeModelIndicator.innerText = selectedVal;
+      activeModelIndicator.style.fontStyle = "normal";
+      activeModelIndicator.style.color = "#FFFFFF";
     }
   }
 

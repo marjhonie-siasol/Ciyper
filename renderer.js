@@ -19,7 +19,7 @@ const resizeHandle = document.getElementById('resize-handle');
 
 let GEMINI_API_KEYS = [];
 let activeKeyIndex = 0;
-let MODEL_NAME = 'llama-3.3-70b-versatile';
+let MODEL_NAME = 'openai/gpt-oss-120b';
 let activeAbortController = null;
 
 // System prompt text holder
@@ -27,8 +27,10 @@ let systemInstructionText = "";
 let sessionHistory = [];
 let apiMessages = [];
 
+const SUPPORTED_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
+
 function getFriendlyModelName(modelVal) {
-  return modelVal || 'llama-3.3-70b-versatile';
+  return modelVal || 'openai/gpt-oss-120b';
 }
 
 function getActiveKeyLabel() {
@@ -63,10 +65,10 @@ async function loadSystemInstructions() {
       if (db.settings.apiKeyBackup2) GEMINI_API_KEYS.push({ type: 'backup2', key: db.settings.apiKeyBackup2 });
 
       // Load Dynamic Model Name
-      if (db.settings.selectedModel) {
+      if (db.settings.selectedModel && SUPPORTED_MODELS.includes(db.settings.selectedModel)) {
         MODEL_NAME = db.settings.selectedModel;
       } else {
-        MODEL_NAME = 'llama-3.3-70b-versatile';
+        MODEL_NAME = 'openai/gpt-oss-120b';
       }
 
       // Load Resume
@@ -1010,7 +1012,7 @@ async function processAudioAndQueryGemini(audioBlob) {
         if ((response.status === 429 || response.status === 400) && rotateApiKey(labelDiv)) {
           continue; // Retry loop with next key
         }
-        throw new Error(`Llama Completion HTTP ${response.status}: ${errText}`);
+        throw new Error(`Groq Completion HTTP ${response.status}: ${errText}`);
       }
       
       await streamResponse(response, replyBubble);
@@ -1290,7 +1292,7 @@ async function initSessionModelDropdown() {
   const db = await ipcRenderer.invoke('get-db-data');
   const savedModel = db && db.settings && db.settings.selectedModel ? db.settings.selectedModel : "";
   
-  if (savedModel) {
+  if (savedModel && SUPPORTED_MODELS.includes(savedModel)) {
     MODEL_NAME = savedModel;
     if (sessionModelValue) {
       sessionModelValue.setAttribute('data-selected-value', savedModel);
@@ -1299,12 +1301,12 @@ async function initSessionModelDropdown() {
       sessionModelValue.classList.remove('text-gray-400');
     }
   } else {
-    MODEL_NAME = 'llama-3.3-70b-versatile';
+    MODEL_NAME = 'openai/gpt-oss-120b';
     if (sessionModelValue) {
-      sessionModelValue.removeAttribute('data-selected-value');
-      sessionModelValue.innerText = "Select Model";
-      sessionModelValue.classList.remove('text-white');
-      sessionModelValue.classList.add('text-gray-400');
+      sessionModelValue.setAttribute('data-selected-value', 'openai/gpt-oss-120b');
+      sessionModelValue.innerText = 'openai/gpt-oss-120b';
+      sessionModelValue.classList.add('text-white');
+      sessionModelValue.classList.remove('text-gray-400');
     }
   }
 

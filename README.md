@@ -6,7 +6,7 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)](https://github.com)
 [![Electron](https://img.shields.io/badge/Electron-31.0.0-47848F?style=flat-square&logo=electron)](https://www.electronjs.org/)
-[![AI Models](https://img.shields.io/badge/Groq%20Cloud-LLaMA%203.3%20%2F%203.1-F55036?style=flat-square)](https://groq.com/)
+[![AI Models](https://img.shields.io/badge/Groq%20Cloud-GPT--OSS%20120B%20%2F%2020B-F55036?style=flat-square)](https://groq.com/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red?style=flat-square)](https://github.com)
 
@@ -25,7 +25,7 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 ## ✨ Key Features
 
 ### ⚡ Powered by Free Groq Cloud AI Models
-- Leverage high-speed production models including **LLaMA 3.3 70B Versatile** (ideal for deep technical reasoning and system design) and **LLaMA 3.1 8B Instant** (optimized for lightning-fast transcriptions and natural conversational banter).
+- Leverage high-speed production models including **OpenAI GPT-OSS 120B** (ideal for deep technical reasoning, algorithms, and system design at ~500 tps) and **OpenAI GPT-OSS 20B** (optimized for lightning-fast meeting responses and conversational banter at ~1,000 tps). Also supports **Qwen 3.8 27B** for agentic coding.
 - Detailed model guide in the dashboard explains the pros, cons, context limits, and token speeds of each model to help you pick the best fit.
 - Free tier available directly from [Groq Cloud](https://console.groq.com/keys)—no paid subscriptions required.
 
@@ -118,7 +118,7 @@ npm start
 
 3. **Select Your Model**:
    - Go to the **AI Models** tab.
-   - Select either `llama-3.3-70b-versatile` (deep reasoning & code) or `llama-3.1-8b-instant` (speed & conversational flow).
+   - Select either `openai/gpt-oss-120b` (deep reasoning & code) or `openai/gpt-oss-20b` (ultra-fast speed & conversational flow), or `qwen/qwen3.8-27b` (agentic coding).
 
 4. **Launch Your Session**:
    - Return to the main screen and click **Start Session**.
