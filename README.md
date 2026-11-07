@@ -56,6 +56,10 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 - **Expandable Chat Panel**: Easily expand to review responses or collapse out of view with a single click.
 - **Audio Capture & Real-Time Transcription**: Built-in speech capture powered by Whisper models on Groq to capture interviewer questions on the fly.
 
+### 🔇 Intelligent Audio & Non-Human Noise Filtering
+- **Zero Accidental Responses**: During live sessions, the app actively filters out non-human sounds such as notification dings, chime sounds, bells, background music, ringtones, or ambient room noises.
+- **Human-Voice Only Triggering**: The AI will **not respond** to random sound effects or background tones. It strictly evaluates authentic human speech before analyzing and responding, ensuring it never blurt out answers to system alerts, Slack/Teams notifications, or accidental noises during your meeting.
+
 ### 📚 Session History
 - Every session is automatically archived locally with timestamps, duration, and generated session titles for post-interview review and learning.
 
