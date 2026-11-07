@@ -1,4 +1,4 @@
-# 🎙️ Co-Assist AI
+# 🎙️ Ciyper
 
 <div align="center">
 
@@ -16,7 +16,7 @@
 
 ## 🌟 Overview
 
-**Co-Assist AI** is an open-source desktop copilot built to give candidates and professionals real-time assistance during live job interviews and meetings. Powered by **Groq Cloud's ultra-low latency inference engine**, Co-Assist AI delivers concise, natural, first-person answers tailored specifically to your real experience, skills, and background.
+**Ciyper** is an open-source desktop copilot built to give candidates and professionals real-time assistance during live job interviews and meetings. Powered by **Groq Cloud's ultra-low latency inference engine**, Ciyper delivers concise, natural, first-person answers tailored specifically to your real experience, skills, and background.
 
 It floats as a sleek, transparent, always-on-top pill widget that sits discreetly above your meeting screen, ready to transcribe speech, answer questions, or provide technical solutions without interrupting your flow.
 
@@ -31,7 +31,7 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 
 ### 🛡️ Triple-Tier API Key Failover (Zero Interruptions)
 - Add up to **3 Groq API keys** (Primary, Backup 1, and Backup 2).
-- If your primary key hits a rate limit or encounters a network hiccup mid-interview, Co-Assist AI **automatically fails over to your backup keys** seamlessly in real time so your session never gets cut off.
+- If your primary key hits a rate limit or encounters a network hiccup mid-interview, Ciyper **automatically fails over to your backup keys** seamlessly in real time so your session never gets cut off.
 
 ### 🔒 100% Privacy & Local Storage
 - **No account creation or login required.**
@@ -79,8 +79,8 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/marjhonie-siasol/co-assist-ai.git
-   cd co-assist-ai
+   git clone https://github.com/marjhonie-siasol/ciyper.git
+   cd ciyper
    ```
 
 2. **Install dependencies:**
@@ -98,7 +98,7 @@ Because Electron requires access to your physical monitor's interactive desktop 
 npm start
 ```
 
-Or download the pre-compiled installer from [GitHub Releases](https://github.com/marjhonie-siasol/co-assist-ai/releases) and double-click the desktop shortcut.
+Or download the pre-compiled installer from [GitHub Releases](https://github.com/marjhonie-siasol/ciyper/releases) and double-click the desktop shortcut.
 
 ---
 
@@ -154,4 +154,4 @@ Contributions, bug reports, and feature suggestions are very welcome!
 
 Distributed under the **MIT License**. See `LICENSE` for more information.
 
-> **Disclaimer:** *Co-Assist AI is intended for learning, note-taking, accessibility, and interview preparation assistance. Users are responsible for complying with the policies, codes of conduct, and honor systems of their respective employers, interviewers, and organizations.*
+> **Disclaimer:** *Ciyper is intended for learning, note-taking, accessibility, and interview preparation assistance. Users are responsible for complying with the policies, codes of conduct, and honor systems of their respective employers, interviewers, and organizations.*

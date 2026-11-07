@@ -822,6 +822,15 @@ const countdownDropdown = document.getElementById('countdown-dropdown');
 const countdownOptions = document.getElementById('countdown-options');
 const countdownArrow = document.getElementById('countdown-arrow');
 const countdownValue = document.getElementById('countdown-value');
+const settingsAppVersion = document.getElementById('settings-app-version');
+
+if (settingsAppVersion && ipcRenderer) {
+  ipcRenderer.invoke('get-app-version').then(ver => {
+    if (ver) {
+      settingsAppVersion.textContent = `Ciyper v${ver}`;
+    }
+  }).catch(() => {});
+}
 
 function hideCountdownOptions() {
   if (countdownOptions) {

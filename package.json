@@ -1,6 +1,6 @@
 {
-  "name": "co-assist-ai",
-  "productName": "Co-Assist AI",
+  "name": "ciyper",
+  "productName": "Ciyper",
   "version": "1.0.0",
   "description": "A floating AI copilot for live interviews and meetings",
   "main": "main.js",
@@ -9,8 +9,8 @@
     "build:win": "electron-builder --win"
   },
   "build": {
-    "appId": "com.coassist.ai",
-    "productName": "Co-Assist AI",
+    "appId": "com.ciyper.app",
+    "productName": "Ciyper",
     "directories": {
       "output": "dist"
     },
@@ -18,8 +18,8 @@
       "main.js",
       "renderer.js",
       "sessions.js",
-      "co-assist_ai_landing.html",
-      "co-assist_ai_session.html",
+      "ciyper_landing.html",
+      "ciyper_session.html",
       "style.css",
       "prism.js",
       "session.png",
@@ -39,7 +39,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Co-Assist AI"
+      "shortcutName": "Ciyper",
+      "artifactName": "${productName}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}.${ext}"
     }
   },
   "devDependencies": {

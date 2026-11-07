@@ -19,6 +19,15 @@ const resizeHandle = document.getElementById('resize-handle');
 const controlBar = document.getElementById('control-bar');
 const menuBtn = document.getElementById('menu-btn');
 const sessionMenuModal = document.getElementById('session-menu-modal');
+const sessionAppVersion = document.getElementById('session-app-version');
+
+if (sessionAppVersion && ipcRenderer) {
+  ipcRenderer.invoke('get-app-version').then(ver => {
+    if (ver) {
+      sessionAppVersion.textContent = `Ciyper v${ver}`;
+    }
+  }).catch(() => {});
+}
 
 let GEMINI_API_KEYS = [];
 let activeKeyIndex = 0;

@@ -13,21 +13,6 @@ function initDatabase() {
     dbPath = path.join(app.getPath('userData'), 'database.json');
   }
   if (!fs.existsSync(dbPath)) {
-    const oldDbPath = path.join(app.getPath('appData'), 'floating-ai-chat-panel', 'database.json');
-    if (fs.existsSync(oldDbPath)) {
-      try {
-        const dir = path.dirname(dbPath);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-        fs.copyFileSync(oldDbPath, dbPath);
-        console.log("Database migrated successfully from floating-ai-chat-panel to co-assist-ai");
-      } catch (err) {
-        console.error("Failed to migrate database:", err);
-      }
-    }
-  }
-  if (!fs.existsSync(dbPath)) {
     const defaultDb = {
       settings: {
         apiKey: "",
@@ -112,6 +97,7 @@ function createSessionsWindow() {
   const y = Math.round((screenHeight - windowHeight) / 2);
 
   sessionsWindow = new BrowserWindow({
+    title: 'Ciyper',
     width: windowWidth,
     height: windowHeight,
     x: x,
@@ -129,7 +115,7 @@ function createSessionsWindow() {
     }
   });
 
-  sessionsWindow.loadFile('co-assist_ai_landing.html');
+  sessionsWindow.loadFile('ciyper_landing.html');
   // sessionsWindow.webContents.openDevTools({ mode: 'detach' });
 
   // Load Content Protection settings
@@ -154,6 +140,7 @@ function createWindow() {
   const y = 80; // 80px from the top of the screen
 
   mainWindow = new BrowserWindow({
+    title: 'Ciyper',
     width: windowWidth,
     height: windowHeight,
     minWidth: 100,
@@ -173,7 +160,7 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile('co-assist_ai_session.html');
+  mainWindow.loadFile('ciyper_session.html');
   // mainWindow.webContents.openDevTools({ mode: 'detach' });
 
   // Load Content Protection settings
@@ -196,7 +183,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   // Set explicit Windows AppUserModelId for taskbar grouping & icon pinning
-  app.setAppUserModelId('com.coassist.ai');
+  app.setAppUserModelId('com.ciyper.app');
 
   // Automatically grant permission and select the screen/audio source requested by renderer
   session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
@@ -293,6 +280,10 @@ ipcMain.on('resize-window', (event, { width, height, animate }) => {
 });
 
 // Database IPC Communication Handlers
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
 ipcMain.handle('get-db-data', () => {
   return readDatabase();
 });
