@@ -102,7 +102,7 @@ function createSessionsWindow() {
     height: windowHeight,
     x: x,
     y: y,
-    icon: path.join(__dirname, 'ciyper-icon.ico'),
+    icon: path.join(__dirname, 'ciyper-logo.ico'),
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -115,7 +115,7 @@ function createSessionsWindow() {
     }
   });
 
-  sessionsWindow.loadFile('ciyper_landing.html');
+  sessionsWindow.loadFile('ciyper_home.html');
   // sessionsWindow.webContents.openDevTools({ mode: 'detach' });
 
   // Load Content Protection settings
@@ -147,7 +147,7 @@ function createWindow() {
     minHeight: 40,
     x: x,
     y: y,
-    icon: path.join(__dirname, 'ciyper-icon.ico'),
+    icon: path.join(__dirname, 'ciyper-logo.ico'),
     frame: false,
     transparent: true,
     alwaysOnTop: true,

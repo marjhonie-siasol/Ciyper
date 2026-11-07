@@ -1,6 +1,8 @@
-# 🎙️ Ciyper
-
 <div align="center">
+
+<img src="ciyper-logo.png" width="128" height="128" alt="Ciyper Logo">
+
+# Ciyper
 
 **A discreet, privacy-first desktop AI assistant designed for live job interviews.**
 
@@ -18,14 +20,14 @@
 
 **Ciyper** is an open-source desktop assistant built to give candidates real-time assistance during live job interviews. Powered by **Groq Cloud's ultra-low latency inference engine**, Ciyper delivers concise, natural, first-person answers tailored specifically to your real experience, skills, and background.
 
-It floats as a sleek, transparent, always-on-top pill widget that sits discreetly above your meeting screen, ready to transcribe speech, answer questions, or provide technical solutions without interrupting your flow.
+It floats as a sleek, transparent, always-on-top pill widget that sits discreetly above your screen, ready to transcribe speech, answer questions, or provide technical solutions without interrupting your flow.
 
 ---
 
 ## ✨ Key Features
 
 ### ⚡ Powered by Free Groq Cloud AI Models
-- Leverage high-speed production models including **OpenAI GPT-OSS 120B** (ideal for deep technical reasoning, algorithms, and system design at ~500 tps) and **OpenAI GPT-OSS 20B** (optimized for lightning-fast meeting responses and conversational banter at ~1,000 tps). Also supports **Qwen 3.8 27B** for agentic coding.
+- Leverage high-speed production models including **OpenAI GPT-OSS 120B** (ideal for deep technical reasoning, algorithms, and system design at ~500 tps) and **OpenAI GPT-OSS 20B** (optimized for lightning-fast interview responses and conversational flow at ~1,000 tps). Also supports **Qwen 3.8 27B** for agentic coding.
 - Detailed model guide in the dashboard explains the pros, cons, context limits, and token speeds of each model to help you pick the best fit.
 - Free tier available directly from [Groq Cloud](https://console.groq.com/keys)—no paid subscriptions required.
 
@@ -45,11 +47,11 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 
 ### 👻 "Invisible Mode" (Screen Sharing & Screenshot Shield)
 - Built-in hardware-level display protection using Electron's `setContentProtection`.
-- When turned **ON**, the application window is completely masked from screen recording and video calls (Zoom, Microsoft Teams, Google Meet, Discord, OBS, etc.), keeping your assistant completely private during presentations and interviews.
+- When turned **ON**, the application window is completely masked from screen recording and video calls (Zoom, Microsoft Teams, Google Meet, Discord, OBS, etc.), keeping your assistant completely private during technical rounds and live interviews.
 
 ### 📊 Visual API Analytics & Health Monitoring
 - Integrated dashboard tracking weekly query volumes and individual health statuses across your Primary and Backup API keys.
-- Quick visual indicators let you know if keys are Healthy, Degraded, or Unused before you begin an important meeting.
+- Quick visual indicators let you know if keys are Healthy, Degraded, or Unused before you begin an important interview.
 
 ### 💬 Minimalist Floating Widget
 - **Top Pill Bar**: Includes an animated audio visualizer, a live session duration timer, quick minimize/expand toggles, and session controls.
@@ -58,7 +60,7 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 
 ### 🔇 Intelligent Audio & Non-Human Noise Filtering
 - **Zero Accidental Responses**: During live sessions, the app actively filters out non-human sounds such as notification dings, chime sounds, bells, background music, ringtones, or ambient room noises.
-- **Human-Voice Only Triggering**: The AI will **not respond** to random sound effects or background tones. It strictly evaluates authentic human speech before analyzing and responding, ensuring it never blurt out answers to system alerts, Slack/Teams notifications, or accidental noises during your meeting.
+- **Human-Voice Only Triggering**: The AI will **not respond** to random sound effects or background tones. It strictly evaluates authentic human speech before analyzing and responding, ensuring it never blurt out answers to system alerts, Slack/Teams notifications, or accidental noises during your live interview.
 
 ### 📚 Session History
 - Every session is automatically archived locally with timestamps, duration, and generated session titles for post-interview review and learning.
@@ -105,9 +107,9 @@ Or download the pre-compiled installer from [GitHub Releases](https://github.com
 ## 🛠️ Configuration & Usage
 
 1. **Add Your API Key(s)**:
-   - Go to the **API Keys** tab in the manager window.
+   - Go to the **API Keys** tab in the home window.
    - Paste your primary Groq API key and click **Save**.
-   - *(Recommended)* Add 1 or 2 backup keys for automatic failover protection during crucial meetings.
+   - *(Recommended)* Add 1 or 2 backup keys for automatic failover protection during crucial interviews.
 
 2. **Set Up Your Profile**:
    - Go to the **My Files** tab.
@@ -120,7 +122,7 @@ Or download the pre-compiled installer from [GitHub Releases](https://github.com
 
 4. **Launch Your Session**:
    - Return to the main screen and click **Start Session**.
-   - After a brief 5-second countdown, the manager minimizes and the discreet floating widget appears at the top of your screen!
+   - After a brief 5-second countdown, the home window minimizes and the discreet floating widget appears at the top of your screen!
 
 ---
 

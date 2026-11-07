@@ -18,17 +18,17 @@
       "main.js",
       "renderer.js",
       "sessions.js",
-      "ciyper_landing.html",
+      "ciyper_home.html",
       "ciyper_session.html",
       "style.css",
       "prism.js",
       "session.png",
-      "ciyper-icon.png",
-      "ciyper-icon.ico",
+      "ciyper-logo.png",
+      "ciyper-logo.ico",
       "package.json"
     ],
     "win": {
-      "icon": "ciyper-icon.ico",
+      "icon": "ciyper-logo.ico",
       "target": [
         "nsis",
         "portable"
