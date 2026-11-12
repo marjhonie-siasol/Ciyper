@@ -208,18 +208,16 @@ ipcMain.on('start-session', () => {
   }
 });
 
-ipcMain.on('end-session', (event, { duration, title }) => {
+ipcMain.on('end-session', (event, { duration, title, messages }) => {
   const db = readDatabase();
-  let finalTitle = title || "Empty Session";
-  if (finalTitle === "Empty Session") {
-    const emptyCount = db.sessions.filter(s => s.name.startsWith("Empty Session")).length + 1;
-    finalTitle = `Empty Session #${emptyCount}`;
-  }
+  const finalTitle = title || "Empty Session";
+  
   const sessionItem = {
     id: Date.now().toString(),
     name: finalTitle,
     duration: duration,
-    date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    messages: messages || []
   };
   db.sessions.unshift(sessionItem);
   writeDatabase(db);

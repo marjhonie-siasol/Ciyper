@@ -17,6 +17,7 @@
     "files": [
       "main.js",
       "renderer.js",
+      "rag.js",
       "sessions.js",
       "ciyper_home.html",
       "ciyper_session.html",

@@ -51,7 +51,7 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 
 ### 📊 Visual API Analytics & Health Monitoring
 - Integrated dashboard tracking weekly query volumes and individual health statuses across your Primary and Backup API keys.
-- Quick visual indicators let you know if keys are Healthy, Degraded, or Unused before you begin an important interview.
+- Quick visual indicators let you know if keys are Healthy, Degraded, or No key before you begin an important interview.
 
 ### 💬 Minimalist Floating Widget
 - **Top Pill Bar**: Includes an animated audio visualizer, a live session duration timer, quick minimize/expand toggles, and session controls.

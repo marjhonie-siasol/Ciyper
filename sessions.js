@@ -236,7 +236,7 @@ function renderUI() {
   if (localDb.sessions && localDb.sessions.length > 0) {
     localDb.sessions.forEach(sess => {
       const row = document.createElement('div');
-      row.className = "flex items-center justify-between py-4 min-w-0 overflow-hidden";
+      row.className = "flex items-center justify-between py-1 min-w-0 overflow-hidden";
       
       row.innerHTML = `
         <button class="delete-session-btn hover:opacity-80 transition-all p-1 mr-3 flex-shrink-0" data-id="${sess.id}" title="Delete Session">
@@ -268,21 +268,19 @@ function renderUI() {
   if (filesList && filesList.length > 0) {
     filesList.forEach(file => {
       const fileRow = document.createElement('div');
-      fileRow.className = "flex items-center justify-start py-2.5 min-w-0 overflow-hidden";
+      fileRow.className = "flex items-center justify-start py-1 min-w-0 overflow-hidden";
       
-      const delBtn = document.createElement('button');
-      delBtn.className = "hover:opacity-80 transition-all p-1 mr-3 flex-shrink-0";
-      delBtn.innerHTML = `<img src="https://img.icons8.com/fluency-systems-regular/96/FA5252/trash--v1.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">`;
-      delBtn.addEventListener('click', async () => {
+      fileRow.innerHTML = `
+        <button class="delete-file-btn hover:opacity-80 transition-all p-1 mr-3 flex-shrink-0" data-id="${file.id}" title="Delete File">
+          <img src="https://img.icons8.com/fluency-systems-regular/96/FA5252/trash--v1.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">
+        </button>
+        <span class="text-sm font-normal truncate pr-4 min-w-0 flex-grow" title="${file.fileName}">${file.fileName}</span>
+      `;
+
+      fileRow.querySelector('.delete-file-btn').addEventListener('click', async () => {
         localDb = await ipcRenderer.invoke('delete-file', { type: activeSubtab, id: file.id });
         renderUI();
       });
-      fileRow.appendChild(delBtn);
-
-      const nameSpan = document.createElement('span');
-      nameSpan.className = "text-xs font-normal text-gray-200 truncate min-w-0 flex-grow";
-      nameSpan.innerText = file.fileName;
-      fileRow.appendChild(nameSpan);
 
       filesListContainer.appendChild(fileRow);
     });
@@ -548,7 +546,7 @@ function renderAnalytics() {
       statusBadge.className = "text-xs px-2 py-0.5 rounded-full text-gray-400 border border-gray-700";
       statusBadge.style.backgroundColor = "#131313";
       statusBadge.style.borderColor = "rgba(47, 47, 47, 0.6)";
-      statusBadge.innerText = "Unused";
+      statusBadge.innerText = "No key";
     } else {
       statusBadge.style.backgroundColor = "";
       statusBadge.style.borderColor = "";
