@@ -24,6 +24,45 @@ It floats as a sleek, transparent, always-on-top pill widget that sits discreetl
 
 ---
 
+## 🔄 How It Works
+
+Ciyper works in a continuous real-time loop during your interview—capturing audio locally on your computer, turning interviewer speech into structured prompts for Groq Cloud AI, and giving you clear talking points to answer naturally:
+
+<div align="center">
+
+<img src="imgs/how-it-works-diagram.png" alt="Ciyper real-time interview workflow diagram" width="820">
+
+</div>
+
+1. **Interviewer Asks a Question**: Audio from the interviewer comes through your computer during a live call.
+2. **Audio Capture & Filtering**: Ciyper captures the spoken audio locally, filters out non-speech noise, and transcribes the question with Groq Whisper.
+3. **AI Response Generation**: The selected Groq LLM combines the question with your resume/context files (via local RAG) and generates a tailored response.
+4. **You Deliver the Answer**: You review the concise response or clarifying question in the floating widget and answer naturally in your own words.
+
+---
+
+## 🖥️ Inside the App
+
+### Home Dashboard
+Manage your primary and backup Groq API keys with live health indicators and weekly query analytics, check your active AI model, upload your context `.txt` files, and review past sessions.
+
+<div align="center">
+
+<img src="imgs/home-dashboard.png" alt="Ciyper Home Dashboard showing API Analytics, active model, and recent sessions" width="800">
+
+</div>
+
+### Live Floating Session Widget
+Sit discreetly above your interview screen with real-time question transcription, syntax-highlighted coding help, and **Ask Back (`Clarify`)** suggestions when an interviewer's prompt needs clarification before coding.
+
+<div align="center">
+
+<img src="imgs/live-session-widget.png" alt="Ciyper Floating Session Widget displaying an interview coding question and Ask Back clarification" width="720">
+
+</div>
+
+---
+
 ## ✨ Key Features
 
 ### ⚡ Powered by Free Groq Cloud AI Models
