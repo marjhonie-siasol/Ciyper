@@ -41,10 +41,11 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Ciyper",
-      "artifactName": "${productName}-Setup.${ext}"
+      "uninstallDisplayName": "Ciyper",
+      "artifactName": "${productName}-Setup-v${version}.${ext}"
     },
     "portable": {
-      "artifactName": "${productName}.${ext}"
+      "artifactName": "${productName}-Portable-v${version}.${ext}"
     }
   },
   "devDependencies": {
