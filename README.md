@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="ciyper-logo.png" width="128" height="128" alt="Ciyper Logo">
+<img src="assets/branding/ciyper-logo.png" width="128" height="128" alt="Ciyper Logo">
 
 # Ciyper
 
@@ -8,8 +8,9 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)](https://github.com)
 [![Electron](https://img.shields.io/badge/Electron-31.0.0-47848F?style=flat-square&logo=electron)](https://www.electronjs.org/)
-[![AI Models](https://img.shields.io/badge/Groq%20Cloud-GPT--OSS%20120B%20%2F%2020B-F55036?style=flat-square)](https://groq.com/)
+[![AI Models](https://img.shields.io/badge/Groq%20Cloud-GPT--OSS%20120B%20%2F%2020B%20%7C%20Qwen%20Vision-F55036?style=flat-square)](https://groq.com/)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-blueviolet?style=flat-square)](PRIVACY.md)
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red?style=flat-square)](https://github.com)
 
 </div>
@@ -66,9 +67,24 @@ Sit discreetly above your interview screen with real-time question transcription
 ## ✨ Key Features
 
 ### ⚡ Powered by Free Groq Cloud AI Models
-- Leverage high-speed production models including **OpenAI GPT-OSS 120B** (ideal for deep technical reasoning, algorithms, and system design at ~500 tps) and **OpenAI GPT-OSS 20B** (optimized for lightning-fast interview responses and conversational flow at ~1,000 tps). Also supports **Qwen 3.8 27B** for agentic coding.
-- Detailed model guide in the dashboard explains the pros, cons, context limits, and token speeds of each model to help you pick the best fit.
+- Leverage high-speed production models including **OpenAI GPT-OSS 120B** (ideal for deep technical reasoning, algorithms, and system design at ~500 tps) and **OpenAI GPT-OSS 20B** (optimized for lightning-fast interview responses and conversational flow at ~1,000 tps).
+- Automatically routes vision and screenshot queries to **Qwen 3.8 27B** for instant visual algorithm solving and code debugging.
 - Free tier available directly from [Groq Cloud](https://console.groq.com/keys)—no paid subscriptions required.
+
+### 📸 Multimodal Vision & Instant Screen Capture
+- **One-Click Screen Capture**: Capture LeetCode problem descriptions, system architecture diagrams, or IDE compiler errors directly from your primary display.
+- **Smart Model Auto-Routing**: Vision turns automatically dispatch to Groq's multimodal `qwen/qwen3.8-27b`, bypassing text-only limitations.
+- **Signature Coding Rules**: Automatically formats screenshot code answers with calm spoken syntax comments (`# So first, ...`), 100% bug-free platform wrappers (`class Solution:`), and concise takeaway + time/space complexity bullets.
+- **Zero Database Bloat**: Raw screenshot image bytes are held in memory only during the active query and are never saved to disk, keeping your local database light and fast.
+
+### 🔕 Stealth Windows System Tray & Global Summon (`Alt + C`)
+- **Zero Taskbar Footprint**: Ciyper runs quietly as a background Windows System Tray application (`skipTaskbar: true`). It never appears on your bottom taskbar and never shows up in the `Alt + Tab` app-switching carousel.
+- **Dedicated Global Shortcut (`Alt + C`)**: Press `Alt + C` from anywhere to summon Ciyper instantly, or tap it again to vanish it back into the tray with zero screen trace.
+- **Close = Hide**: Clicking the `X` button hides Ciyper to the tray in memory for instant 0.0-second re-opening.
+
+### ⏸️ Live Play / Pause Audio Listening Toggle
+- Easily pause speech capture and AI auto-answering mid-interview with one click without stopping your elapsed session duration timer.
+- Dynamic waveform icon swaps between active animated wave (`session.play.png`) and clean paused wave (`session.pause.png`).
 
 ### 🛡️ Triple-Tier API Key Failover (Zero Interruptions)
 - Add up to **3 Groq API keys** (Primary, Backup 1, and Backup 2).
@@ -78,6 +94,7 @@ Sit discreetly above your interview screen with real-time question transcription
 - **No account creation or login required.**
 - All sensitive information—including your resume, context files, API keys, and session logs—is saved **100% locally on your machine** (`database.json`).
 - Zero telemetry, zero tracking, and zero data sent to external servers or the developer. Your data belongs exclusively to you.
+- See [PRIVACY.md](PRIVACY.md) for our full data sovereignty policy.
 
 ### 🎭 AI Persona & Credibility Context Files (`.txt`)
 - **Resume Upload (`.txt`)**: Attach your resume so the assistant knows your previous companies, roles, metrics, and accomplishments.
@@ -93,9 +110,10 @@ Sit discreetly above your interview screen with real-time question transcription
 - Quick visual indicators let you know if keys are Healthy, Degraded, or No key before you begin an important interview.
 
 ### 💬 Minimalist Floating Widget
-- **Top Pill Bar**: Includes an animated audio visualizer, a live session duration timer, quick minimize/expand toggles, and session controls.
+- **Top Pill Bar**: Includes an isolated 48px Stop Session circle, live session duration timer, play/pause toggle, quick minimize/expand chevron, and 90° rotating menu.
 - **Expandable Chat Panel**: Easily expand to review responses or collapse out of view with a single click.
 - **Audio Capture & Real-Time Transcription**: Built-in speech capture powered by Whisper models on Groq to capture interviewer questions on the fly.
+- **100% Offline Bundled Icons**: Zero external CDN calls; all 23 UI icons are bundled locally for instant offline reliability.
 
 ### 🔇 Intelligent Audio & Non-Human Noise Filtering
 - **Zero Accidental Responses**: During live sessions, the app actively filters out non-human sounds such as notification dings, chime sounds, bells, background music, ringtones, or ambient room noises.
@@ -191,8 +209,44 @@ Contributions, bug reports, and feature suggestions are very welcome!
 
 ---
 
-## ⚖️ License & Disclaimer
+## 📁 Project Architecture
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Ciyper is structured according to modular Electron architecture best practices:
 
-> **Disclaimer:** *Ciyper is intended for learning, note-taking, accessibility, and interview preparation assistance. Users are responsible for complying with the policies, codes of conduct, and honor systems of their respective employers, interviewers, and organizations.*
+```text
+Ciyper/
+├── assets/
+│   ├── branding/                 # ciyper-logo.png, ciyper-logo.ico
+│   └── icons/                    # All 23 offline UI icons (zero CDN calls)
+├── src/
+│   ├── main/                     # Main Electron process (system tray, IPC, window management)
+│   │   └── main.js
+│   ├── renderer/                 # Renderer process (chat UI, audio capture, local RAG)
+│   │   ├── renderer.js
+│   │   ├── sessions.js
+│   │   ├── rag.js
+│   │   └── prism.js
+│   ├── views/                    # HTML UI windows
+│   │   ├── ciyper_home.html      # Setup dashboard & analytics
+│   │   └── ciyper_session.html   # Floating interview session bar
+│   └── styles/                   # Core stylesheet
+│       └── style.css
+├── LICENSE                       # MIT License
+├── PRIVACY.md                    # Privacy Policy (100% local, zero telemetry)
+├── DISCLAIMER.md                 # Legal disclaimer & educational terms of use
+├── ATTRIBUTIONS.md               # Open-source third-party credits
+└── package.json
+```
+
+---
+
+## ⚖️ License, Privacy & Legal Documents
+
+Ciyper is released as open-source software under the terms of the **MIT License**.
+
+- **[LICENSE](LICENSE)**: MIT License terms and complete "As-Is" limitation of liability.
+- **[PRIVACY.md](PRIVACY.md)**: 100% local-first data policy, zero tracking, and zero telemetry guarantee.
+- **[DISCLAIMER.md](DISCLAIMER.md)**: Educational study, mock interview preparation, and responsible use guidelines.
+- **[ATTRIBUTIONS.md](ATTRIBUTIONS.md)**: Acknowledgments for Electron, Tailwind CSS, Prism.js, and Icons8.
+
+> **Responsible Use Notice:** *Ciyper is designed and distributed as an educational assistant and mock interview preparation tool. Users are solely responsible for ensuring compliance with the honor codes, testing policies, employee codes of conduct, and non-disclosure agreements (NDAs) of their respective employers, testing platforms, and academic institutions.*
