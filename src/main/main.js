@@ -323,7 +323,11 @@ ipcMain.on('start-session', () => {
 
 ipcMain.on('end-session', (event, { duration, title, messages }) => {
   const db = readDatabase();
-  const finalTitle = title || "Empty Session";
+  const finalTitle = (title || "Interview Session")
+    .replace(/\[?screenshot\s*(?:analysis|attached)?\]?\s*[:-]?\s*/gi, '')
+    .replace(/^["'`*]+|["'`*]+$/g, '')
+    .replace(/[\.:]+$/, '')
+    .trim() || "Interview Session";
   
   const sessionItem = {
     id: Date.now().toString(),

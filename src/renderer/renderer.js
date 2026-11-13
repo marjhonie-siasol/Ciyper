@@ -976,57 +976,115 @@ recordingCloseBtn.addEventListener('click', async () => {
   const duration = document.getElementById('session-timer').innerText;
 
   // Visual status feedback
-  updateStatus("Generating title...", 'thinking');
+  updateStatus("Saving session...", 'thinking');
 
   let aiTitle = "";
   const currentKey = GEMINI_API_KEYS[activeKeyIndex] ? GEMINI_API_KEYS[activeKeyIndex].key : '';
   if (sessionHistory.length > 0 && currentKey) {
     try {
-      const historySnippet = sessionHistory.slice(-60).join("\n"); // use last 30 dialogue turns to capture the overall context
-      const url = `https://api.groq.com/openai/v1/chat/completions`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentKey}`
-        },
-        body: JSON.stringify({
-          model: MODEL_NAME,
-          messages: [{
-            role: "user",
-            content: `Analyze this entire conversation and generate a consistent, professional title summarizing the overall topics discussed. The title MUST be a clean, descriptive sentence under 80 characters, without any quotation marks or punctuation. Do not focus on just the end topic, but capture the key highlights from start to finish. Conversation:\n\n${historySnippet}`
-          }],
-          max_tokens: 30
+      // 1. Build a clean, high-signal dialogue summary (filter low-value audio checks and raw tags)
+      const cleanSnippet = sessionHistory
+        .map(line => line.replace(/^User:\s*\[?(?:Screenshot\s*(?:Analysis|Attached))\]?\s*/i, 'User: '))
+        .filter(line => {
+          return !/\b(?:hear\s+and\s+see|can\s+you\s+hear|loud\s+and\s+clear|good\s+to\s+meet|quick\s+mic\s+check)\b/i.test(line);
         })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.choices && result.choices[0] && result.choices[0].message) {
-          aiTitle = result.choices[0].message.content.trim();
+        .slice(-20)
+        .join("\n");
+
+      if (cleanSnippet.trim()) {
+        const titleModel = 'qwen/qwen3.8-27b'; // Blazing fast ~25ms inference with zero reasoning token starvation
+        const url = `https://api.groq.com/openai/v1/chat/completions`;
+        
+        // Fast 3.5s timeout abort controller so ending a session is never stalled by network lag
+        const timeoutController = new AbortController();
+        const timeoutId = setTimeout(() => timeoutController.abort(), 3500);
+
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            signal: timeoutController.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${currentKey}`
+            },
+            body: JSON.stringify({
+              model: titleModel,
+              messages: [{
+                role: "user",
+                content: `Analyze this interview session dialogue and generate a concise, professional title summarizing the core technical topics, architecture, or coding algorithms discussed. Output strictly ONE clean headline between 3 and 8 words (under 70 characters). Never use quotation marks, periods, bullets, or generic tags like 'Screenshot' or 'Discussion of'. Dialogue:\n\n${cleanSnippet}`
+              }],
+              max_tokens: 60,
+              temperature: 0.2
+            })
+          });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.choices && result.choices[0] && result.choices[0].message) {
+              let candidateTitle = (result.choices[0].message.content || "").trim();
+              // Clean up any quotes, asterisks, periods, or trailing punctuation
+              candidateTitle = candidateTitle.replace(/^["'`*]+|["'`*]+$/g, '').replace(/[\.:]+$/, '').trim();
+              if (candidateTitle) {
+                aiTitle = candidateTitle.replace(/\[?screenshot\s*(?:analysis|attached)?\]?\s*[:-]?\s*/gi, '').trim();
+              }
+            }
+          }
+        } catch (fetchErr) {
+          clearTimeout(timeoutId);
+          console.warn("Title generation network call timed out or failed:", fetchErr.message);
         }
       }
     } catch (e) {
-      console.error("Failed to generate AI title, falling back to local extraction:", e);
+      console.error("Failed to generate AI title, falling back to smart local extraction:", e);
     }
   }
 
-  // Local fallback: if API failed or skipped, but conversation history exists
+  // Smart local fallback: if API failed or skipped, find first high-signal technical question or function name
   if (!aiTitle && sessionHistory.length > 0) {
-    const firstUserMsg = sessionHistory.find(msg => msg.startsWith("User: "));
-    if (firstUserMsg) {
-      const question = firstUserMsg.replace(/^User:\s*/i, "").trim();
-      aiTitle = question.length > 80 ? question.substring(0, 77) + "..." : question;
+    // 1. Scan for function or class definition in AI answers
+    const codeMatch = sessionHistory.find(msg => msg.includes('def ') || msg.includes('class '));
+    if (codeMatch) {
+      const fnMatch = codeMatch.match(/(?:def|class)\s+([a-zA-Z0-9_]+)/);
+      if (fnMatch && fnMatch[1] && fnMatch[1] !== 'Solution') {
+        const formatted = fnMatch[1]
+          .replace(/([a-z])([A-Z])/g, '$1 $2')
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, c => c.toUpperCase());
+        aiTitle = `${formatted} Algorithm`;
+      }
+    }
+
+    // 2. If no code match, find first non-greeting user question
+    if (!aiTitle) {
+      const realUserMsg = sessionHistory.find(msg => {
+        if (!msg.startsWith("User: ")) return false;
+        const clean = msg.replace(/^User:\s*/i, '').trim();
+        return clean && !/^(?:\[?Screenshot|hear\s+me|see\s+me|hello|hi|good\s+morning|good\s+afternoon)/i.test(clean);
+      });
+      if (realUserMsg) {
+        const question = realUserMsg.replace(/^User:\s*/i, "").trim();
+        aiTitle = question.length > 70 ? question.substring(0, 67) + "..." : question;
+      }
     }
   }
 
-  // Fallback if no conversation happened at all
+  // Final fallback if session was completely empty
   if (!aiTitle) {
-    aiTitle = "Empty Session";
+    aiTitle = "Interview Session";
   }
+
+  // Double check to ensure [Screenshot Analysis] is never in the title
+  aiTitle = aiTitle.replace(/\[?screenshot\s*(?:analysis|attached)?\]?\s*[:-]?\s*/gi, '').trim() || "Interview Session";
 
   ipcRenderer.send('end-session', { duration, title: aiTitle, messages: savedSessionMessages });
+});
+
+// IPC trigger to end session from System Tray or shortcut
+ipcRenderer.on('trigger-end-session', () => {
+  if (recordingCloseBtn) {
+    recordingCloseBtn.click();
+  }
 });
 
 // Esc key to minimize
@@ -1892,7 +1950,7 @@ async function sendTextMessage(text, attachedImage = null) {
 
   const userDisplayText = text;
   const historyQuestionText = attachedImage
-    ? (text ? `[Screenshot Attached] ${text}` : `[Screenshot Analysis]`)
+    ? (text ? text : "Problem and code analysis")
     : text;
   const userQueryText = text || (attachedImage ? "Analyze the technical problem, code, or architecture shown in this interview screenshot. Identify what is being asked and provide a concise, structured first-person candidate response with the optimal approach and clean code." : "");
 
