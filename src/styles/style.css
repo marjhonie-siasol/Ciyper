@@ -507,3 +507,67 @@ input:checked + .slider:before {
   overflow-wrap: anywhere;
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* --- Screenshot Button & Chat Bubble Styles --- */
+#screenshot-btn.has-screenshot {
+  border-color: rgba(59, 130, 246, 0.8);
+}
+
+#screenshot-btn.has-screenshot:hover #screenshot-remove-overlay {
+  display: flex !important;
+}
+
+.chat-screenshot-container {
+  margin-top: 6px;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: #0d0d0d;
+}
+
+.chat-screenshot-img {
+  width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  display: block;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.chat-screenshot-img:hover {
+  opacity: 0.92;
+}
+
+#playback-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+#top-bar-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+#stop-pill-container {
+  width: 48px;
+  height: 48px;
+  box-sizing: border-box;
+}
+
+/* Explicitly remove all box shadows across in-session floating elements */
+#stop-pill-container,
+#control-bar,
+#chat-panel,
+#session-menu-modal,
+#screenshot-btn,
+.bg-theme-btn {
+  box-shadow: none !important;
+}
+
+#menu-icon {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+

@@ -3,7 +3,7 @@
   "productName": "Ciyper",
   "version": "1.0.0",
   "description": "A floating AI assistant for live job interviews",
-  "main": "main.js",
+  "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
     "build:win": "electron-builder --win"
@@ -15,21 +15,12 @@
       "output": "dist"
     },
     "files": [
-      "main.js",
-      "renderer.js",
-      "rag.js",
-      "sessions.js",
-      "ciyper_home.html",
-      "ciyper_session.html",
-      "style.css",
-      "prism.js",
-      "session.png",
-      "ciyper-logo.png",
-      "ciyper-logo.ico",
+      "src/**/*",
+      "assets/**/*",
       "package.json"
     ],
     "win": {
-      "icon": "ciyper-logo.ico",
+      "icon": "assets/branding/ciyper-logo.ico",
       "target": [
         "nsis",
         "portable"

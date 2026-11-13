@@ -18,8 +18,16 @@ const audioWaveGif = document.getElementById('audio-wave-gif');
 const resizeHandle = document.getElementById('resize-handle');
 const controlBar = document.getElementById('control-bar');
 const menuBtn = document.getElementById('menu-btn');
+const menuIcon = document.getElementById('menu-icon');
 const sessionMenuModal = document.getElementById('session-menu-modal');
 const sessionAppVersion = document.getElementById('session-app-version');
+const playbackToggleBtn = document.getElementById('playback-toggle-btn');
+const playbackToggleIcon = document.getElementById('playback-toggle-icon');
+const screenshotBtn = document.getElementById('screenshot-btn');
+const screenshotDefaultIcon = document.getElementById('screenshot-default-icon');
+const screenshotPreviewThumb = document.getElementById('screenshot-preview-thumb');
+const screenshotRemoveOverlay = document.getElementById('screenshot-remove-overlay');
+let pendingScreenshot = null;
 
 if (sessionAppVersion && ipcRenderer) {
   ipcRenderer.invoke('get-app-version').then(ver => {
@@ -917,10 +925,10 @@ let chatPanelWidth = 680;
 let chatPanelHeight = 260;
 
 function updateWindowSize(animate = false) {
-  const cb = controlBar || document.getElementById('control-bar');
-  const cbRect = cb ? cb.getBoundingClientRect() : null;
-  const cbWidth = cbRect && cbRect.width > 0 ? Math.ceil(cbRect.width) : 272;
-  const cbHeight = cbRect && cbRect.height > 0 ? Math.ceil(cbRect.height) : 50;
+  const topBar = document.getElementById('top-bar-container') || controlBar || document.getElementById('control-bar');
+  const topBarRect = topBar ? topBar.getBoundingClientRect() : null;
+  const topBarWidth = topBarRect && topBarRect.width > 0 ? Math.ceil(topBarRect.width) : 340;
+  const topBarHeight = topBarRect && topBarRect.height > 0 ? Math.ceil(topBarRect.height) : 50;
   const smm = sessionMenuModal || document.getElementById('session-menu-modal');
   const isMenuOpen = smm && !smm.classList.contains('collapsed-menu');
   const sessionModelOptions = document.getElementById('session-model-options');
@@ -929,23 +937,23 @@ function updateWindowSize(animate = false) {
   let width, height;
 
   if (isExpanded) {
-    // Flush against the chat panel (or control bar if panel is narrower) with zero outer padding
-    const contentWidth = Math.max(chatPanelWidth, cbWidth);
+    // Flush against the chat panel (or top bar if panel is narrower) with zero outer padding
+    const contentWidth = Math.max(chatPanelWidth, topBarWidth);
     width = Math.round(contentWidth);
-    let minNeededHeight = cbHeight + 12 + chatPanelHeight;
+    let minNeededHeight = topBarHeight + 12 + chatPanelHeight;
     if (isMenuOpen) {
       const menuHeight = isOptionsOpen ? 260 : 130;
-      minNeededHeight = Math.max(minNeededHeight, cbHeight + 8 + menuHeight);
+      minNeededHeight = Math.max(minNeededHeight, topBarHeight + 8 + menuHeight);
     }
     height = Math.round(minNeededHeight);
   } else {
-    // Collapsed pill mode: flush against the control bar with zero outer padding
-    width = Math.round(cbWidth);
+    // Collapsed pill mode: flush against top bar with zero outer padding
+    width = Math.round(topBarWidth);
     if (isMenuOpen) {
       const menuHeight = isOptionsOpen ? 260 : 130;
-      height = Math.round(cbHeight + 8 + menuHeight);
+      height = Math.round(topBarHeight + 8 + menuHeight);
     } else {
-      height = Math.round(cbHeight);
+      height = Math.round(topBarHeight);
     }
   }
 
@@ -1060,39 +1068,105 @@ expandToggleBtn.addEventListener('click', () => {
   }, 50);
 });
 
-// Enable/Disable send button based on input
-chatInput.addEventListener('input', () => {
-  if (chatInput.value.trim() !== '') {
+// Enable/Disable send button based on text input OR attached screenshot
+function updateSendButtonState() {
+  if (chatInput.value.trim() !== '' || pendingScreenshot) {
     sendBtn.removeAttribute('disabled');
   } else {
     sendBtn.setAttribute('disabled', 'true');
   }
+}
+
+chatInput.addEventListener('input', () => {
+  updateSendButtonState();
 });
 
 // Send message on Enter
 chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter' && chatInput.value.trim() !== '') {
-    sendMessage();
+  if (e.key === 'Enter') {
+    if (chatInput.value.trim() !== '' || pendingScreenshot) {
+      sendMessage();
+    }
   }
 });
 
 sendBtn.addEventListener('click', () => {
-  if (chatInput.value.trim() !== '') {
+  if (chatInput.value.trim() !== '' || pendingScreenshot) {
     sendMessage();
   }
 });
 
-function sendMessage() {
-  const text = chatInput.value.trim();
-  if (!text) return;
-
-  chatInput.value = '';
-  sendBtn.setAttribute('disabled', 'true');
-
-  sendTextMessage(text);
+function setScreenshotAttachment(dataUrl) {
+  pendingScreenshot = dataUrl;
+  if (screenshotDefaultIcon) screenshotDefaultIcon.classList.add('hidden');
+  if (screenshotPreviewThumb) {
+    screenshotPreviewThumb.src = dataUrl;
+    screenshotPreviewThumb.classList.remove('hidden');
+  }
+  if (screenshotBtn) {
+    screenshotBtn.classList.add('has-screenshot');
+    screenshotBtn.title = 'Screenshot attached (Hover to remove)';
+  }
+  updateSendButtonState();
 }
 
-function appendMessage(text, sender, label = "", source = null) {
+function clearScreenshotAttachment() {
+  pendingScreenshot = null;
+  if (screenshotDefaultIcon) screenshotDefaultIcon.classList.remove('hidden');
+  if (screenshotPreviewThumb) {
+    screenshotPreviewThumb.src = '';
+    screenshotPreviewThumb.classList.add('hidden');
+  }
+  if (screenshotRemoveOverlay) screenshotRemoveOverlay.classList.add('hidden');
+  if (screenshotBtn) {
+    screenshotBtn.classList.remove('has-screenshot');
+    screenshotBtn.title = 'Take Screenshot';
+  }
+  updateSendButtonState();
+}
+
+if (screenshotBtn) {
+  screenshotBtn.addEventListener('click', async (e) => {
+    if (e.target.closest('#screenshot-remove-overlay')) {
+      return;
+    }
+    if (pendingScreenshot) {
+      return;
+    }
+    try {
+      screenshotBtn.style.opacity = '0.5';
+      const dataUrl = await ipcRenderer.invoke('capture-screen');
+      if (dataUrl) {
+        setScreenshotAttachment(dataUrl);
+      }
+    } catch (err) {
+      console.error("Failed to capture screen:", err);
+    } finally {
+      if (screenshotBtn) screenshotBtn.style.opacity = '';
+    }
+  });
+}
+
+if (screenshotRemoveOverlay) {
+  screenshotRemoveOverlay.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearScreenshotAttachment();
+  });
+}
+
+function sendMessage() {
+  const text = chatInput.value.trim();
+  const attachedImage = pendingScreenshot;
+  if (!text && !attachedImage) return;
+
+  chatInput.value = '';
+  clearScreenshotAttachment();
+  updateSendButtonState();
+
+  sendTextMessage(text, attachedImage);
+}
+
+function appendMessage(text, sender, label = "", source = null, attachedImage = null) {
   const groupDiv = document.createElement('div');
   groupDiv.classList.add('flex', 'flex-col', 'w-full');
   if (sender === 'user') {
@@ -1122,7 +1196,29 @@ function appendMessage(text, sender, label = "", source = null) {
       attachSourceCitation(msgDiv, source);
     }
   } else {
-    msgDiv.innerText = text;
+    if (text) {
+      const textDiv = document.createElement('div');
+      textDiv.innerText = text;
+      msgDiv.appendChild(textDiv);
+    }
+    if (attachedImage) {
+      const imgContainer = document.createElement('div');
+      imgContainer.classList.add('chat-screenshot-container');
+      const imgElem = document.createElement('img');
+      imgElem.src = attachedImage;
+      imgElem.alt = 'Screenshot';
+      imgElem.classList.add('chat-screenshot-img');
+      imgElem.title = 'Click to open full preview';
+      imgElem.addEventListener('click', () => {
+        const previewWin = window.open('');
+        if (previewWin) {
+          previewWin.document.write(`<img src="${attachedImage}" style="max-width:100%;height:auto;margin:auto;display:block;background:#000;" />`);
+          previewWin.document.body.style.background = '#0a0a0a';
+        }
+      });
+      imgContainer.appendChild(imgElem);
+      msgDiv.appendChild(imgContainer);
+    }
   }
   groupDiv.appendChild(msgDiv);
   
@@ -1391,7 +1487,13 @@ async function streamAudioResponse(response, statusIndicator, replyBubble) {
 }
 
 function showListeningIndicator() {
-  if (document.getElementById('listening-indicator')) return;
+  const existing = document.getElementById('listening-indicator');
+  const statusMsg = isMuted ? 'AI is paused...' : 'AI is listening right now...';
+  if (existing) {
+    const msg = existing.querySelector('.message') || existing;
+    msg.innerText = statusMsg;
+    return;
+  }
   
   const groupDiv = document.createElement('div');
   groupDiv.id = 'listening-indicator';
@@ -1404,7 +1506,7 @@ function showListeningIndicator() {
   
   const msgDiv = document.createElement('div');
   msgDiv.classList.add('message', 'ai');
-  msgDiv.innerText = 'AI is listening right now...';
+  msgDiv.innerText = statusMsg;
   groupDiv.appendChild(msgDiv);
   
   messagesList.appendChild(groupDiv);
@@ -1466,50 +1568,64 @@ function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Update UI Status (Visual state of mic and gif)
+// Update UI Status (Visual state of wave gif and status text)
 function updateStatus(text, stateClass = '') {
   if (statusText) statusText.innerText = text;
   
-  // Update mic button style and wave gif opacity based on state
-  if (listenBtn) {
-    listenBtn.className = 'w-6 h-6 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity';
+  // Manage wave icon src and opacity based on active/paused state
+  if (audioWaveGif) {
     if (isMuted) {
-      listenBtn.classList.add('muted');
-      if (audioWaveGif) audioWaveGif.style.opacity = '0.25';
+      if (!audioWaveGif.src.endsWith('session.pause.png')) {
+        audioWaveGif.src = '../../assets/icons/session.pause.png';
+      }
+      // Keep paused wave icon bright white just like on play
+      audioWaveGif.style.opacity = '0.85';
       return;
     }
     
-    if (stateClass) {
-      listenBtn.classList.add(stateClass);
+    if (!audioWaveGif.src.endsWith('session.play.png')) {
+      audioWaveGif.src = '../../assets/icons/session.play.png';
     }
-  }
-
-  // Manage gif opacity/pulse
-  if (audioWaveGif) {
     if (stateClass === 'listening') {
-      audioWaveGif.style.opacity = '0.9';
+      audioWaveGif.style.opacity = '0.85';
     } else if (stateClass === 'thinking') {
       audioWaveGif.style.opacity = '0.4';
     } else {
-      audioWaveGif.style.opacity = '0.8';
+      audioWaveGif.style.opacity = '0.85';
     }
   }
 }
 
-function buildGroqRequestPayload(promptText, userContent, isCodeCall) {
+function buildGroqRequestPayload(promptText, userContent, isCodeCall, attachedImage = null) {
+  let activeModel = MODEL_NAME;
+  let userPayloadContent = userContent;
+
+  if (attachedImage) {
+    // If current model is text-only (gpt-oss), automatically route to Qwen vision model
+    if (!activeModel.includes('qwen')) {
+      activeModel = 'qwen/qwen3.8-27b';
+    }
+    userPayloadContent = [
+      { type: 'text', text: userContent },
+      { type: 'image_url', image_url: { url: attachedImage } }
+    ];
+  }
+
   const payload = {
-    model: MODEL_NAME,
+    model: activeModel,
     temperature: isCodeCall ? 0.4 : 0.5,
-    max_tokens: isCodeCall ? 2800 : 450,
+    max_tokens: isCodeCall ? 2800 : 800,
     messages: [
       { role: 'system', content: promptText },
-      ...apiMessages.slice(-8),
-      { role: 'user', content: userContent }
+      ...apiMessages.slice(-6),
+      { role: 'user', content: userPayloadContent }
     ],
     stream: true
   };
-  if (MODEL_NAME.includes('oss')) {
+  if (activeModel.includes('oss')) {
     payload.reasoning_effort = isCodeCall ? 'medium' : 'low';
+  } else if (activeModel.includes('qwen')) {
+    payload.reasoning_effort = 'default';
   }
   return payload;
 }
@@ -1606,7 +1722,22 @@ function commitCompletedTurn(questionText, finalPlan, streamResult, replyBubble)
 // Shared turn execution for both typed questions and live transcribed interview audio
 async function executeInterviewQuery(questionText, replyBubble, labelDiv, options = {}) {
   const ragEngine = getRagEngine();
+  const attachedImage = options ? options.attachedImage : null;
+  const historyQuestionText = (options && options.historyQuestionText) ? options.historyQuestionText : questionText;
   const initialPlan = getTurnPlan(questionText, { fromAudio: Boolean(options && options.fromAudio) });
+
+  if (attachedImage) {
+    initialPlan.mode = 'Coding';
+    initialPlan.isCoding = true;
+    initialPlan.isCodeCall = true;
+    initialPlan.expectTag = 'NONE';
+    const baseCodingDirective = "Analyze the technical problem, code, or architecture shown in this interview screenshot. Adhere strictly to the Ciyper coding format: 1 short spoken opening strategy sentence before the code block, clean bug-free code matching any platform entrypoint (like 'class Solution:') with line-by-line calm spoken syntax comments strictly directly ABOVE each line matching indentation starting with '# So first,', and a short footer with exactly 2 takeaway bullets and 1 Time/Space complexity bullet.";
+    if (!questionText || questionText === "Analyze the problem or code shown in this screenshot.") {
+      initialPlan.userMessageForApi = baseCodingDirective;
+    } else {
+      initialPlan.userMessageForApi = `${questionText}\n\n[Instruction: ${baseCodingDirective}]`;
+    }
+  }
 
   while (true) {
     try {
@@ -1614,7 +1745,7 @@ async function executeInterviewQuery(questionText, replyBubble, labelDiv, option
 
       const abortSignal = activeAbortController ? activeAbortController.signal : undefined;
       const { response, currentType } = await fetchGroqChatWithFailover(
-        () => buildGroqRequestPayload(systemInstructionText, initialPlan.userMessageForApi, initialPlan.isCodeCall),
+        () => buildGroqRequestPayload(systemInstructionText, initialPlan.userMessageForApi, initialPlan.isCodeCall, attachedImage),
         labelDiv,
         abortSignal
       );
@@ -1703,7 +1834,7 @@ async function executeInterviewQuery(questionText, replyBubble, labelDiv, option
         return true;
       }
 
-      commitCompletedTurn(questionText, activePlan, streamResult, replyBubble);
+      commitCompletedTurn(historyQuestionText, activePlan, streamResult, replyBubble);
       ipcRenderer.send('set-key-status', { keyType: activeKeyType, status: 'healthy' });
       ipcRenderer.send('increment-api-usage', { keyType: activeKeyType });
       return true;
@@ -1749,8 +1880,8 @@ async function executeInterviewQuery(questionText, replyBubble, labelDiv, option
   }
 }
 
-// Groq Text Query
-async function sendTextMessage(text) {
+// Groq Text & Multimodal Query
+async function sendTextMessage(text, attachedImage = null) {
   removeListeningIndicator();
 
   // Abort any active query before starting a new one
@@ -1759,15 +1890,22 @@ async function sendTextMessage(text) {
   }
   activeAbortController = new AbortController();
 
-  appendMessage(text, 'user', 'Me');
-  const { msgDiv: replyBubble, labelDiv } = appendMessage("Thinking...", 'ai', getActiveKeyLabel());
+  const userDisplayText = text;
+  const historyQuestionText = attachedImage
+    ? (text ? `[Screenshot Attached] ${text}` : `[Screenshot Analysis]`)
+    : text;
+  const userQueryText = text || (attachedImage ? "Analyze the technical problem, code, or architecture shown in this interview screenshot. Identify what is being asked and provide a concise, structured first-person candidate response with the optimal approach and clean code." : "");
+
+  appendMessage(userDisplayText, 'user', 'Me', null, attachedImage);
+  const activeModelDisplay = attachedImage && !MODEL_NAME.includes('qwen') ? 'qwen/qwen3.8-27b' : getFriendlyModelName(MODEL_NAME);
+  const { msgDiv: replyBubble, labelDiv } = appendMessage("Thinking...", 'ai', `${getActiveKeyLabel()} • ${activeModelDisplay}`);
   scrollToBottom();
 
   isProcessingResponse = true;
   updateStatus("Thinking...", 'thinking');
 
   try {
-    await executeInterviewQuery(text, replyBubble, labelDiv);
+    await executeInterviewQuery(userQueryText, replyBubble, labelDiv, { attachedImage, historyQuestionText });
   } catch (outerErr) {
     console.error("Unhandled error in sendTextMessage:", outerErr);
     if (replyBubble && replyBubble.innerText === "Thinking...") {
@@ -1775,7 +1913,7 @@ async function sendTextMessage(text) {
     }
   } finally {
     isProcessingResponse = false;
-    updateStatus("Listening for sound...", 'listening');
+    updateStatus(isMuted ? "AI listening paused" : "Listening for sound...", isMuted ? 'muted' : 'listening');
     showListeningIndicator();
     scrollToBottom();
   }
@@ -2291,18 +2429,34 @@ async function processAudioAndQueryGemini(audioBlob) {
   }
 }
 
-// User toggle to mute/unmute auto-listening
-if (listenBtn) {
-  listenBtn.addEventListener('click', () => {
-    isMuted = !isMuted;
-    if (isMuted) {
-      updateStatus("Auto-listening paused", 'muted');
-      if (isRecording) {
-        stopRecording();
-      }
-    } else {
-      updateStatus("Listening for sound...", 'listening');
+// Play / Pause Audio Listening Toggle
+function setAudioListeningPaused(paused) {
+  isMuted = Boolean(paused);
+  if (playbackToggleIcon) {
+    playbackToggleIcon.src = isMuted ? '../../assets/icons/play.png' : '../../assets/icons/pause.png';
+    playbackToggleIcon.alt = isMuted ? 'play' : 'pause';
+  }
+  if (playbackToggleBtn) {
+    playbackToggleBtn.title = isMuted ? 'Resume AI Listening' : 'Pause AI Listening';
+  }
+  if (audioWaveGif) {
+    audioWaveGif.src = isMuted ? '../../assets/icons/session.pause.png' : '../../assets/icons/session.play.png';
+    audioWaveGif.style.opacity = '0.85';
+  }
+  if (isMuted) {
+    updateStatus("AI is paused...", 'muted');
+    if (isRecording) {
+      stopRecording();
     }
+  } else {
+    updateStatus("Listening for sound...", 'listening');
+  }
+  showListeningIndicator();
+}
+
+if (playbackToggleBtn) {
+  playbackToggleBtn.addEventListener('click', () => {
+    setAudioListeningPaused(!isMuted);
   });
 }
 
@@ -2418,10 +2572,12 @@ if (menuBtn && sessionMenuModal) {
     const isClosed = sessionMenuModal.classList.contains('collapsed-menu');
     if (isClosed) {
       sessionMenuModal.classList.remove('collapsed-menu');
+      if (menuIcon) menuIcon.style.transform = 'rotate(90deg)';
       positionMenuModal();
       updateWindowSize(false);
     } else {
       sessionMenuModal.classList.add('collapsed-menu');
+      if (menuIcon) menuIcon.style.transform = 'rotate(0deg)';
       
       // Also close the dropdown options if they were open
       if (sessionModelOptions) {

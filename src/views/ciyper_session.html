@@ -6,7 +6,7 @@
   <title>Ciyper</title>
   <!-- Tailwind CSS v2 CDN -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../styles/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -14,31 +14,41 @@
 <body class="bg-transparent overflow-hidden w-full h-full m-0 p-0">
   <div class="w-full h-full flex flex-col items-center justify-start p-0 m-0 overflow-hidden" id="widget-container">
     
-    <!-- FIRST FLOATING: Control Bar (Top Pill) -->
-    <header class="bg-theme-bg border border-theme-border rounded-full drag-handle" id="control-bar">
-      <!-- Recording Close Button -->
-      <button id="recording-close-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity no-drag flex-shrink-0" title="Close App">
-        <img src="https://img.icons8.com/forma-bold-filled-sharp/96/circled.png" alt="circled" class="w-4 h-4 icon-theme">
-      </button>
-
-      <!-- Session Wave Indicator -->
-      <div class="flex items-center justify-center flex-shrink-0">
-        <img src="session.png" alt="session-wave" class="w-8 h-8 object-contain icon-theme opacity-80" id="audio-wave-gif">
+    <!-- FIRST ROW: Stop Session Floating Circle + Floating Control Bar -->
+    <div class="flex items-center justify-center no-drag flex-shrink-0" id="top-bar-container">
+      <!-- Stop Session Floating Circle -->
+      <div class="w-12 h-12 rounded-full bg-theme-bg border border-theme-border flex items-center justify-center flex-shrink-0" id="stop-pill-container">
+        <button id="recording-close-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity no-drag flex-shrink-0 cursor-pointer" title="End Session & Save">
+          <img src="../../assets/icons/circled.png" alt="circled" class="w-4 h-4 icon-theme">
+        </button>
       </div>
+
+      <!-- FIRST FLOATING: Control Bar (Top Pill) -->
+      <header class="bg-theme-bg border border-theme-border rounded-full drag-handle" id="control-bar">
+        <!-- Play / Pause Audio Listening Button (First on left) -->
+        <button id="playback-toggle-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity no-drag flex-shrink-0" title="Pause AI Listening">
+          <img src="../../assets/icons/pause.png" alt="pause" class="w-4 h-4 icon-theme" id="playback-toggle-icon">
+        </button>
+
+        <!-- Session Wave Indicator -->
+        <div class="flex items-center justify-center flex-shrink-0">
+          <img src="../../assets/icons/session.play.png" alt="session-wave" class="w-8 h-8 object-contain icon-theme opacity-80" id="audio-wave-gif">
+        </div>
  
-      <!-- Session Duration Timer -->
-      <span class="text-white text-sm font-semibold tracking-wide select-none flex-shrink-0" id="session-timer">00:00</span>
+        <!-- Session Duration Timer -->
+        <span class="text-white text-sm font-semibold tracking-wide select-none flex-shrink-0" id="session-timer">00:00</span>
  
-      <!-- Chevron expand/collapse toggle -->
-      <button id="expand-toggle-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity no-drag flex-shrink-0" title="Toggle Chat Panel">
-        <img src="https://img.icons8.com/ios-filled/100/expand-arrow--v1.png" alt="expand-arrow" class="w-4 h-4 icon-theme transition-transform duration-300" id="chevron-icon">
-      </button>
+        <!-- Chevron expand/collapse toggle -->
+        <button id="expand-toggle-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity no-drag flex-shrink-0" title="Toggle Chat Panel">
+          <img src="../../assets/icons/expand-arrow.png" alt="expand-arrow" class="w-4 h-4 icon-theme transition-transform duration-300" id="chevron-icon">
+        </button>
  
-      <!-- 3 dots menu -->
-      <button id="menu-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity no-drag flex-shrink-0" title="Menu">
-        <img src="https://img.icons8.com/glyph-neue/64/menu-2.png" alt="menu-2" class="w-4 h-4 icon-theme">
-      </button>
-    </header>
+        <!-- 3 dots menu -->
+        <button id="menu-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-80 transition-opacity no-drag flex-shrink-0" title="Menu">
+          <img src="../../assets/icons/menu-2.png" alt="menu-2" class="w-4 h-4 icon-theme transition-transform duration-300" id="menu-icon">
+        </button>
+      </header>
+    </div>
  
     <!-- SECOND FLOATING: Chat Panel (Below Control Bar) -->
     <div class="mt-3 bg-theme-bg border border-theme-border rounded-2xl flex flex-col transition-all duration-300 overflow-hidden collapsed-panel" id="chat-panel">
@@ -48,14 +58,20 @@
         <div class="flex-grow flex items-center border rounded-full px-3 py-1.5 focus-within:border-blue-500 transition-colors" id="chat-input-wrapper">
           <input type="text" id="chat-input" placeholder="Ask here..." autocomplete="off" class="w-full bg-transparent text-white text-sm outline-none placeholder-gray-600">
           <button id="send-btn" class="w-8 h-8 rounded-full bg-theme-btn flex items-center justify-center hover:opacity-85 transition-opacity flex-shrink-0" disabled>
-            <img src="https://img.icons8.com/ios-filled/100/down--v1.png" alt="send" class="w-4 h-4 icon-theme transform">
+            <img src="../../assets/icons/send-down.png" alt="send" class="w-4 h-4 icon-theme transform">
           </button>
         </div>
  
-        <!-- Screenshot Button -->
-        <button id="screenshot-btn" class="w-8 h-8 rounded-lg bg-theme-btn flex items-center justify-center hover:opacity-85 transition-opacity flex-shrink-0" title="Take Screenshot">
-          <img src="https://img.icons8.com/windows/96/screenshot.png" alt="screenshot" class="w-4 h-4 icon-theme">
-        </button>
+        <!-- Screenshot Button Container -->
+        <div class="relative flex-shrink-0" id="screenshot-wrapper">
+          <button id="screenshot-btn" class="w-8 h-8 rounded-lg bg-theme-btn flex items-center justify-center hover:opacity-85 transition-opacity overflow-hidden relative" title="Take Screenshot">
+            <img src="../../assets/icons/screenshot.png" alt="screenshot" class="w-4 h-4 icon-theme" id="screenshot-default-icon">
+            <img id="screenshot-preview-thumb" class="w-full h-full object-cover hidden rounded-lg" alt="preview">
+            <div id="screenshot-remove-overlay" class="absolute inset-0 bg-black bg-opacity-75 hidden items-center justify-center cursor-pointer transition-opacity" title="Remove Screenshot">
+              <img src="../../assets/icons/close-x.png" alt="remove" class="w-3.5 h-3.5 icon-theme">
+            </div>
+          </button>
+        </div>
       </div>
  
       <!-- Chat Response Area -->
@@ -72,7 +88,7 @@
         <span class="text-xs text-gray-500 font-medium tracking-wide">powered by Groq AI</span>
         <!-- Resize handle -->
         <div class="cursor-se-resize flex items-center justify-center" id="resize-handle">
-          <img src="https://img.icons8.com/forma-light/96/resize--v2.png" alt="resize" class="w-4 h-4 icon-theme opacity-50 transition-opacity hover:opacity-80">
+          <img src="../../assets/icons/resize.png" alt="resize" class="w-4 h-4 icon-theme opacity-50 transition-opacity hover:opacity-80">
         </div>
       </footer>
     </div>
@@ -94,22 +110,22 @@
         <!-- Custom styled dropdown trigger -->
         <div id="session-model-dropdown" class="flex items-center justify-between border rounded-lg px-2.5 py-1.5 cursor-pointer select-none" style="background-color: rgba(19, 19, 19, 0.7); border-color: rgba(47, 47, 47, 0.7);">
           <span id="session-model-value" class="text-xs text-gray-400 font-normal truncate">Select Model</span>
-          <img src="https://img.icons8.com/ios-filled/100/expand-arrow--v1.png" alt="arrow" class="w-2.5 h-2.5 icon-theme transition-transform duration-200" id="session-model-arrow">
+          <img src="../../assets/icons/expand-arrow.png" alt="arrow" class="w-2.5 h-2.5 icon-theme transition-transform duration-200" id="session-model-arrow">
         </div>
         
         <!-- Custom styled dropdown list -->
         <div id="session-model-options" class="absolute left-0 right-0 top-full mt-1.5 border rounded-lg z-50 hidden flex-col overflow-hidden bg-theme-bg border-theme-border" style="border-color: rgba(47, 47, 47, 0.7); backdrop-filter: blur(6px);">
           <div class="session-option flex items-center justify-between px-3 py-2 text-xs text-white cursor-pointer transition-colors" data-value="openai/gpt-oss-120b">
             <span>openai/gpt-oss-120b</span>
-            <img src="https://img.icons8.com/fluency-systems-filled/96/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
+            <img src="../../assets/icons/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
           </div>
           <div class="session-option flex items-center justify-between px-3 py-2 text-xs text-white cursor-pointer transition-colors" data-value="openai/gpt-oss-20b">
             <span>openai/gpt-oss-20b</span>
-            <img src="https://img.icons8.com/fluency-systems-filled/96/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
+            <img src="../../assets/icons/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
           </div>
           <div class="session-option flex items-center justify-between px-3 py-2 text-xs text-white cursor-pointer transition-colors" data-value="qwen/qwen3.8-27b">
             <span>qwen/qwen3.8-27b</span>
-            <img src="https://img.icons8.com/fluency-systems-filled/96/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
+            <img src="../../assets/icons/checkmark.png" alt="check" class="w-3.5 h-3.5 icon-theme checkmark-icon hidden">
           </div>
         </div>
       </div>
@@ -122,8 +138,8 @@
 
   </div>
  
-  <script src="prism.js"></script>
-  <script src="rag.js"></script>
-  <script src="renderer.js"></script>
+  <script src="../renderer/prism.js"></script>
+  <script src="../renderer/rag.js"></script>
+  <script src="../renderer/renderer.js"></script>
 </body>
 </html>

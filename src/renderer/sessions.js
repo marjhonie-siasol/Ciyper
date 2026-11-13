@@ -240,7 +240,7 @@ function renderUI() {
       
       row.innerHTML = `
         <button class="delete-session-btn hover:opacity-80 transition-all p-1 mr-3 flex-shrink-0" data-id="${sess.id}" title="Delete Session">
-          <img src="https://img.icons8.com/fluency-systems-regular/96/FA5252/trash--v1.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">
+          <img src="../../assets/icons/trash.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">
         </button>
         <span class="text-sm font-normal truncate pr-4 min-w-0 flex-grow" title="${sess.name}">${sess.name}</span>
         <div class="flex items-center space-x-3.5 flex-shrink-0">
@@ -272,7 +272,7 @@ function renderUI() {
       
       fileRow.innerHTML = `
         <button class="delete-file-btn hover:opacity-80 transition-all p-1 mr-3 flex-shrink-0" data-id="${file.id}" title="Delete File">
-          <img src="https://img.icons8.com/fluency-systems-regular/96/FA5252/trash--v1.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">
+          <img src="../../assets/icons/trash.png" alt="delete" class="w-4 h-4 opacity-75 hover:opacity-100">
         </button>
         <span class="text-sm font-normal truncate pr-4 min-w-0 flex-grow" title="${file.fileName}">${file.fileName}</span>
       `;
@@ -482,11 +482,11 @@ if (togglePasswordBtn && togglePasswordIcon && apiKeyInput) {
   togglePasswordBtn.addEventListener('click', () => {
     if (apiKeyInput.type === 'password') {
       apiKeyInput.type = 'text';
-      togglePasswordIcon.src = 'https://img.icons8.com/forma-regular/96/visible.png';
+      togglePasswordIcon.src = '../../assets/icons/visible.png';
       togglePasswordIcon.alt = 'hide password';
     } else {
       apiKeyInput.type = 'password';
-      togglePasswordIcon.src = 'https://img.icons8.com/forma-regular/96/invisible.png';
+      togglePasswordIcon.src = '../../assets/icons/invisible.png';
       togglePasswordIcon.alt = 'show password';
     }
   });
@@ -496,11 +496,11 @@ if (togglePasswordBtnBackup1 && togglePasswordIconBackup1 && apiKeyInputBackup1)
   togglePasswordBtnBackup1.addEventListener('click', () => {
     if (apiKeyInputBackup1.type === 'password') {
       apiKeyInputBackup1.type = 'text';
-      togglePasswordIconBackup1.src = 'https://img.icons8.com/forma-regular/96/visible.png';
+      togglePasswordIconBackup1.src = '../../assets/icons/visible.png';
       togglePasswordIconBackup1.alt = 'hide password';
     } else {
       apiKeyInputBackup1.type = 'password';
-      togglePasswordIconBackup1.src = 'https://img.icons8.com/forma-regular/96/invisible.png';
+      togglePasswordIconBackup1.src = '../../assets/icons/invisible.png';
       togglePasswordIconBackup1.alt = 'show password';
     }
   });
@@ -510,11 +510,11 @@ if (togglePasswordBtnBackup2 && togglePasswordIconBackup2 && apiKeyInputBackup2)
   togglePasswordBtnBackup2.addEventListener('click', () => {
     if (apiKeyInputBackup2.type === 'password') {
       apiKeyInputBackup2.type = 'text';
-      togglePasswordIconBackup2.src = 'https://img.icons8.com/forma-regular/96/visible.png';
+      togglePasswordIconBackup2.src = '../../assets/icons/visible.png';
       togglePasswordIconBackup2.alt = 'hide password';
     } else {
       apiKeyInputBackup2.type = 'password';
-      togglePasswordIconBackup2.src = 'https://img.icons8.com/forma-regular/96/invisible.png';
+      togglePasswordIconBackup2.src = '../../assets/icons/invisible.png';
       togglePasswordIconBackup2.alt = 'show password';
     }
   });
@@ -773,7 +773,7 @@ document.addEventListener('click', async (e) => {
         if (img) {
           const originalSrc = img.src;
           const originalFilter = img.style.filter;
-          img.src = "https://img.icons8.com/ios-filled/100/checkmark--v1.png";
+          img.src = "../../assets/icons/checkmark-active.png";
           img.style.filter = "invert(48%) sepia(97%) saturate(583%) hue-rotate(113deg) brightness(95%) contrast(98%)"; // Green
           setTimeout(() => {
             img.src = originalSrc;

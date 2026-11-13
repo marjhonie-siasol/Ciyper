@@ -1,9 +1,11 @@
-const { app, BrowserWindow, screen, ipcMain, session, desktopCapturer, dialog } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, session, desktopCapturer, dialog, Tray, Menu, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 let mainWindow;
 let sessionsWindow;
+let tray = null;
+let isQuitting = false;
 
 // Local JSON Database Configuration
 let dbPath;
@@ -102,12 +104,12 @@ function createSessionsWindow() {
     height: windowHeight,
     x: x,
     y: y,
-    icon: path.join(__dirname, 'ciyper-logo.ico'),
+    icon: path.join(__dirname, '../../assets/branding/ciyper-logo.ico'),
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    skipTaskbar: false,
+    skipTaskbar: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -115,8 +117,7 @@ function createSessionsWindow() {
     }
   });
 
-  sessionsWindow.loadFile('ciyper_home.html');
-  // sessionsWindow.webContents.openDevTools({ mode: 'detach' });
+  sessionsWindow.loadFile(path.join(__dirname, '../views/ciyper_home.html'));
 
   // Load Content Protection settings
   const db = readDatabase();
@@ -124,15 +125,24 @@ function createSessionsWindow() {
     sessionsWindow.setContentProtection(true);
   }
 
+  sessionsWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      sessionsWindow.hide();
+      updateTrayMenu();
+    }
+  });
+
   sessionsWindow.show();
   sessionsWindow.focus();
+  updateTrayMenu();
 }
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.bounds;
 
-  const windowWidth = 272;
+  const windowWidth = 360;
   const windowHeight = 50; // Start collapsed (pill shape)
 
   // Calculate coordinates to place it top-center
@@ -147,12 +157,12 @@ function createWindow() {
     minHeight: 40,
     x: x,
     y: y,
-    icon: path.join(__dirname, 'ciyper-logo.ico'),
+    icon: path.join(__dirname, '../../assets/branding/ciyper-logo.ico'),
     frame: false,
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    skipTaskbar: false,
+    skipTaskbar: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -160,8 +170,7 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile('ciyper_session.html');
-  // mainWindow.webContents.openDevTools({ mode: 'detach' });
+  mainWindow.loadFile(path.join(__dirname, '../views/ciyper_session.html'));
 
   // Load Content Protection settings
   const sessionDb = readDatabase();
@@ -172,13 +181,98 @@ function createWindow() {
   // Avoid visual flashing on load
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    updateTrayMenu();
   });
 
-  // Handle window focus and blur
-  mainWindow.on('blur', () => {
-    // Optionally hide when user clicks away
-    // mainWindow.hide();
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+      updateTrayMenu();
+    }
   });
+}
+
+function toggleCiyperVisibility() {
+  const activeWin = (mainWindow && !mainWindow.isDestroyed())
+    ? mainWindow
+    : (sessionsWindow && !sessionsWindow.isDestroyed() ? sessionsWindow : null);
+
+  if (!activeWin) {
+    createSessionsWindow();
+    return;
+  }
+
+  if (activeWin.isVisible()) {
+    if (activeWin.isFocused()) {
+      activeWin.hide();
+    } else {
+      activeWin.show();
+      activeWin.focus();
+    }
+  } else {
+    activeWin.show();
+    activeWin.focus();
+  }
+  updateTrayMenu();
+}
+
+function updateTrayMenu() {
+  if (!tray) return;
+  const isSession = Boolean(mainWindow && !mainWindow.isDestroyed());
+  const activeWin = isSession ? mainWindow : sessionsWindow;
+  const isVisible = Boolean(activeWin && !activeWin.isDestroyed() && activeWin.isVisible());
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: isVisible ? 'Hide Ciyper (Alt + C)' : 'Show Ciyper (Alt + C)',
+      click: () => toggleCiyperVisibility()
+    },
+    { type: 'separator' },
+    {
+      label: isSession ? 'Stop Session' : 'Start Session',
+      click: () => {
+        if (isSession) {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('trigger-end-session');
+          }
+        } else {
+          createWindow();
+          if (sessionsWindow && !sessionsWindow.isDestroyed()) {
+            sessionsWindow.destroy();
+            sessionsWindow = null;
+          }
+          updateTrayMenu();
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit Ciyper',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+  tray.setContextMenu(contextMenu);
+}
+
+function createSystemTray() {
+  if (tray) return;
+  const iconPath = path.join(__dirname, '../../assets/branding/ciyper-logo.ico');
+  tray = new Tray(iconPath);
+  tray.setToolTip('Ciyper - AI Interview Copilot (Alt + C)');
+
+  tray.on('click', () => {
+    toggleCiyperVisibility();
+  });
+
+  tray.on('right-click', () => {
+    updateTrayMenu();
+  });
+
+  updateTrayMenu();
 }
 
 app.whenReady().then(() => {
@@ -193,19 +287,38 @@ app.whenReady().then(() => {
     });
   });
 
+  createSystemTray();
+
+  globalShortcut.register('Alt+C', () => {
+    toggleCiyperVisibility();
+  });
+
   createSessionsWindow();
 
   app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createSessionsWindow();
+    if (!sessionsWindow && !mainWindow) {
+      createSessionsWindow();
+    } else {
+      toggleCiyperVisibility();
+    }
   });
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
 });
 
 ipcMain.on('start-session', () => {
   createWindow();
-  if (sessionsWindow) {
-    sessionsWindow.close();
+  if (sessionsWindow && !sessionsWindow.isDestroyed()) {
+    sessionsWindow.destroy();
     sessionsWindow = null;
   }
+  updateTrayMenu();
 });
 
 ipcMain.on('end-session', (event, { duration, title, messages }) => {
@@ -223,10 +336,11 @@ ipcMain.on('end-session', (event, { duration, title, messages }) => {
   writeDatabase(db);
 
   createSessionsWindow();
-  if (mainWindow) {
-    mainWindow.close();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy();
     mainWindow = null;
   }
+  updateTrayMenu();
 });
 
 ipcMain.handle('delete-session', async (event, id) => {
@@ -237,27 +351,61 @@ ipcMain.handle('delete-session', async (event, id) => {
 });
 
 app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit();
+  // Keep alive in the System Tray
 });
 
 // IPC handlers for window control
-ipcMain.on('close-window', () => {
-  app.quit();
+ipcMain.on('close-window', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed()) {
+    win.hide();
+  } else if (sessionsWindow && !sessionsWindow.isDestroyed()) {
+    sessionsWindow.hide();
+  } else if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
+  }
+  updateTrayMenu();
 });
 
 ipcMain.on('minimize-window', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
+  if (win && !win.isDestroyed()) {
     win.minimize();
-  } else if (sessionsWindow) {
+  } else if (sessionsWindow && !sessionsWindow.isDestroyed()) {
     sessionsWindow.minimize();
-  } else if (mainWindow) {
+  } else if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.minimize();
   }
 });
 
 ipcMain.handle('get-desktop-sources', async () => {
   return await desktopCapturer.getSources({ types: ['screen', 'window'] });
+});
+
+ipcMain.handle('capture-screen', async () => {
+  try {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.size;
+    const scaleFactor = primaryDisplay.scaleFactor || 1;
+    const fullWidth = Math.round(width * scaleFactor);
+    const fullHeight = Math.round(height * scaleFactor);
+
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width: fullWidth, height: fullHeight }
+    });
+
+    const screenSource = sources.find(s => s.id.startsWith('screen:') || s.name === 'Entire Screen' || s.name.toLowerCase().includes('screen')) || sources[0];
+
+    if (!screenSource || !screenSource.thumbnail) {
+      throw new Error('Unable to capture screen thumbnail.');
+    }
+
+    return screenSource.thumbnail.toDataURL();
+  } catch (err) {
+    console.error('Screen capture failed:', err);
+    throw err;
+  }
 });
 
 ipcMain.on('resize-window', (event, { width, height, animate }) => {
