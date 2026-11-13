@@ -1913,7 +1913,7 @@ async function sendTextMessage(text, attachedImage = null) {
     }
   } finally {
     isProcessingResponse = false;
-    updateStatus(isMuted ? "AI listening paused" : "Listening for sound...", isMuted ? 'muted' : 'listening');
+    updateStatus(isMuted ? "AI is paused..." : "Listening for sound...", isMuted ? 'muted' : 'listening');
     showListeningIndicator();
     scrollToBottom();
   }
